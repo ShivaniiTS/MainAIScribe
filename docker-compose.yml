@@ -59,7 +59,7 @@ services:
       context: ./client/web
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://${PUBLIC_IP:-localhost}:8080
       - NEXT_PUBLIC_PIPELINE_API_URL=http://${PUBLIC_IP:-localhost}:8100

@@ -5,17 +5,19 @@
 # For split deployment across machines, use:
 #   deploy/docker-compose.provider.yml   (provider-facing server)
 #   deploy/docker-compose.pipeline.yml   (processing pipeline server)
-
-version: "3.9"
+#
+# Required env vars before running on a remote server:
+#   export PUBLIC_IP=$(curl -s checkip.amazonaws.com)
+#   docker compose -f docker-compose.yml up -d --build
 
 services:
-  # ── Provider-facing API (port 8000) ─────────────────────────────────
+  # ── Provider-facing API (port 8001 — avoids conflict with other projects on 8000) ──
   api-provider:
     build:
       context: .
       dockerfile: deploy/Dockerfile.api
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./ai-scribe-data:/app/ai-scribe-data
       - ./output:/app/output
@@ -49,6 +51,9 @@ services:
     restart: unless-stopped
 
   # ── Provider web portal (port 3000) ─────────────────────────────────
+  # NEXT_PUBLIC_API_URL must be the PUBLIC IP so browsers outside the server
+  # can reach the API. Set PUBLIC_IP before running:
+  #   export PUBLIC_IP=$(curl -s checkip.amazonaws.com)
   web:
     build:
       context: ./client/web
@@ -56,7 +61,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://${PUBLIC_IP:-localhost}:8001
+      - NEXT_PUBLIC_PIPELINE_API_URL=http://${PUBLIC_IP:-localhost}:8100
       - NEXT_PUBLIC_SERVER_ROLE=provider-facing
     depends_on:
       - api-provider

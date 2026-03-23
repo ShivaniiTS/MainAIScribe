@@ -1,0 +1,80 @@
+asr_override: null
+correction_count: 0
+credentials: MD
+custom_vocabulary:
+- Excelsia
+- Excelsior
+- Spurling
+- paraspinal
+- cervicothoracic
+- radiculopathy
+- cervical radiculitis
+- myofascial
+- posttraumatic headache
+- post-concussive syndrome
+- post-concussion
+- photophobia
+- tinnitus
+- propranolol
+- amantadine
+- gabapentin
+- cyclobenzaprine
+- meloxicam
+- lidocaine
+- Zofran
+- vestibular
+- cognitive therapy
+- trigger point injection
+- epidural steroid injection
+- subdeltoid
+- labrum
+- labral
+- cranial nerves
+- deep tendon reflexes
+- serial 7
+- MVA
+- WAD
+- ROM
+- PT
+id: dr_scott_pello
+llm_override: null
+name: Dr. Scott Pello
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: excelsia_injury_care
+quality_history: []
+quality_scores: {}
+specialty: neurology
+style_directives:
+- Write in third person (e.g. 'The patient presents...' not 'Patient presents')
+- Use past tense for examination findings and interval history
+- Spell out abbreviations on first use (e.g. 'range of motion (ROM)', 'deep tendon
+  reflexes (DTR)')
+- List diagnoses in the Assessment as numbered items
+- Mirror Assessment numbering in the Plan (Plan item 1 corresponds to Assessment item
+  1)
+- Include cognitive evaluation findings (serial 7, word recall, orientation) in the
+  Physical Examination when performed
+- Document cranial nerve findings as 'Cranial nerves II through XII are grossly intact'
+  unless specific deficits noted
+- Document neurological exam including motor strength (out of 5), sensation, and deep
+  tendon reflex grading (2+ symmetric)
+- Include gait assessment in every Physical Examination
+- For headache cases, document headache frequency, duration, character, and associated
+  symptoms (nausea, photophobia, phonophobia, tinnitus, dizziness)
+- For auto accident / work injury cases, reference the accident date and mechanism
+  in the HPI
+- Document work status (unable to work, modified duty, return to work) in the Plan
+- When a section is unchanged from prior visit, state 'reviewed and unchanged from
+  prior evaluation'
+- Use formal clinical language; avoid contractions
+style_model_version: v0
+template_routing:
+  assume_care: neuro_follow_up
+  default: neuro_follow_up
+  discharge: neuro_follow_up
+  follow_up: neuro_follow_up
+  initial: neuro_initial_eval
+  initial_evaluation: neuro_initial_eval

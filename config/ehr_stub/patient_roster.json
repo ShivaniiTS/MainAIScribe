@@ -1,0 +1,24 @@
+{
+  "patients": [
+    {"id": "P-10001", "first_name": "James", "last_name": "Dotson_TEST", "date_of_birth": "1978-06-15", "sex": "Male", "mrn": "224938", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10002", "first_name": "Tanya", "last_name": "Queen_TEST", "date_of_birth": "1985-03-22", "sex": "Female", "mrn": "223818", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10003", "first_name": "Daisy", "last_name": "Colina_TEST", "date_of_birth": "1990-11-08", "sex": "Female", "mrn": "206551", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10004", "first_name": "Derrick", "last_name": "Clarke_TEST", "date_of_birth": "1972-01-30", "sex": "Male", "mrn": "227512", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10005", "first_name": "Javier", "last_name": "Waters_TEST", "date_of_birth": "1988-09-14", "sex": "Male", "mrn": "227534", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10006", "first_name": "Maryann", "last_name": "Duckett_TEST", "date_of_birth": "1965-04-02", "sex": "Female", "mrn": "40761", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10007", "first_name": "Bernadeen", "last_name": "Hoard_TEST", "date_of_birth": "1960-08-19", "sex": "Female", "mrn": "195713", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10008", "first_name": "Karen", "last_name": "Szeliga_TEST", "date_of_birth": "1975-12-05", "sex": "Female", "mrn": "226172", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10009", "first_name": "Marcus", "last_name": "Gross_TEST", "date_of_birth": "1982-07-11", "sex": "Male", "mrn": "217762", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10010", "first_name": "Valonte", "last_name": "Harrell_TEST", "date_of_birth": "1995-02-28", "sex": "Male", "mrn": "226546", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10011", "first_name": "Sharon", "last_name": "Cohen_TEST", "date_of_birth": "1968-10-03", "sex": "Female", "mrn": "217541", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10012", "first_name": "Timothy", "last_name": "Clark_TEST", "date_of_birth": "1979-05-17", "sex": "Male", "mrn": "226530", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10013", "first_name": "Andre", "last_name": "Owen_TEST", "date_of_birth": "1987-11-25", "sex": "Male", "mrn": "225772", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10014", "first_name": "Fatima", "last_name": "Macias_TEST", "date_of_birth": "1993-06-09", "sex": "Female", "mrn": "219442", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10015", "first_name": "Benjamin", "last_name": "Pritchett_TEST", "date_of_birth": "1970-03-14", "sex": "Male", "mrn": "216913", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10016", "first_name": "Gianna", "last_name": "Monaldi_TEST", "date_of_birth": "1991-08-22", "sex": "Female", "mrn": "226762", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10017", "first_name": "Riley", "last_name": "Dew_TEST", "date_of_birth": "2001-01-07", "sex": "Male", "mrn": "226680", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10018", "first_name": "Ethel", "last_name": "Montalvan_TEST", "date_of_birth": "1955-09-30", "sex": "Female", "mrn": "219879", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10019", "first_name": "Hanna", "last_name": "Isper_TEST", "date_of_birth": "1984-04-18", "sex": "Female", "mrn": "221568", "practice_id": "excelsia_injury_care"},
+    {"id": "P-10020", "first_name": "Greg", "last_name": "Ramsey_TEST", "date_of_birth": "1976-12-11", "sex": "Male", "mrn": "217858", "practice_id": "excelsia_injury_care"}
+  ]
+}

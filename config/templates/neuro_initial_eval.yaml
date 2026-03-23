@@ -1,0 +1,62 @@
+# Neurology Initial Evaluation template — first-visit neurological encounters (concussion, headache, nerve injury).
+name: "Neurology Initial Evaluation"
+specialty: neurology
+visit_type: initial_evaluation
+
+header_fields:
+  - patient_name
+  - date_of_birth
+  - date_of_service
+  - date_of_injury
+  - mechanism_of_injury
+  - provider_name
+  - referring_provider
+  - location
+
+sections:
+  - id: history_of_present_illness
+    label: "HISTORY OF PRESENT ILLNESS"
+    required: true
+    prompt_hint: "Mechanism of injury and date, presenting neurological symptoms (headache, dizziness, cognitive changes, numbness/tingling, weakness), onset and progression, emergency evaluation and findings, prior neurological workup, current symptom severity"
+
+  - id: past_medical_history
+    label: "PAST MEDICAL HISTORY"
+    required: true
+    prompt_hint: "Relevant medical conditions including prior neurological diagnoses, head injuries, migraines"
+
+  - id: social_history
+    label: "SOCIAL HISTORY"
+    required: false
+    prompt_hint: "Occupation, functional limitations, tobacco/alcohol use if mentioned"
+
+  - id: family_history
+    label: "FAMILY HISTORY"
+    required: false
+    prompt_hint: "Relevant neurological family history (migraines, seizures, stroke); 'Noncontributory' if not mentioned"
+
+  - id: allergies
+    label: "ALLERGIES"
+    required: true
+    prompt_hint: "Drug allergies; write 'NKDA' if no known drug allergies"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "Neurological examination: mental status, cranial nerves (II-XII), motor strength, sensory examination, deep tendon reflexes, cerebellar function, gait assessment, cervical/lumbar spine exam if relevant"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered neurological diagnoses; include post-traumatic etiology, concussion grading if applicable"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered plan: medications (name, dose, frequency), diagnostic orders (CT, MRI, EEG, NCS/EMG), referrals (psychiatry, neuropsychology, PT), activity restrictions, cognitive rest recommendations, work status, follow-up interval"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units

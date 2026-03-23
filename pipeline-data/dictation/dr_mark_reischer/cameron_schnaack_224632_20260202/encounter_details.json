@@ -1,0 +1,17 @@
+{
+  "encounter_id": "224632",
+  "date_of_exam": "2026-02-02",
+  "date_of_accident": "2025-12-05",
+  "case_number": "DC120525",
+  "visit_type": "follow_up",
+  "location": "WHITE MARSH",
+  "provider": {
+    "first_name": "MARK",
+    "last_name": "REISCHER",
+    "full_name": "MARK REISCHER"
+  },
+  "supervising_physician": "",
+  "mode": "dictation",
+  "provider_id": "dr_mark_reischer",
+  "audio_file": "dictation.mp3"
+}

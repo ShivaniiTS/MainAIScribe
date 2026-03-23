@@ -1,0 +1,169 @@
+# config/deployment.yaml — Deployment configuration for AI Scribe Enterprise
+#
+# Defines server roles, network addresses, sync schedules, and feature flags.
+# For development, run two instances on the same machine — one provider-facing
+# on port 8000, one pipeline on port 8100.
+#
+# Server roles:
+#   "provider-facing"     — Client web/mobile UI, EHR access, proxies to pipeline
+#   "processing-pipeline" — GPU pipeline, admin UI, template/provider management
+
+server:
+  # Which role this server instance plays
+  role: "provider-facing"  # "provider-facing" | "processing-pipeline"
+
+  # Unique identifier for this server instance (used in logs, sync tracking)
+  instance_id: "ai-scribe-dev-01"
+
+# ---------------------------------------------------------------------------
+# Network addresses
+# ---------------------------------------------------------------------------
+network:
+  # Provider-facing server (serves client UI + mobile API)
+  provider_facing:
+    host: "0.0.0.0"
+    api_port: 8000
+    web_port: 3000
+    # Public URL for the provider-facing API (used by web/mobile clients)
+    public_url: "http://localhost:8000"
+    # Public URL for the web UI
+    web_url: "http://localhost:3000"
+
+  # Processing pipeline server (GPU workloads + admin UI)
+  processing_pipeline:
+    host: "0.0.0.0"
+    api_port: 8100
+    web_port: 3100
+    # Internal URL for the pipeline API (used by provider-facing server to proxy)
+    internal_url: "http://localhost:8100"
+    # Admin web UI URL
+    admin_url: "http://localhost:3100"
+
+# ---------------------------------------------------------------------------
+# Data directories (per-server paths)
+# ---------------------------------------------------------------------------
+data:
+  # Provider-facing server directories
+  provider_facing:
+    data_dir: "ai-scribe-data"       # Patient encounters (audio, demographics, gold notes)
+    output_dir: "output"             # Generated notes, transcripts (synced from pipeline)
+    config_dir: "config"             # Local config (providers, templates synced periodically)
+
+  # Processing pipeline server directories
+  processing_pipeline:
+    data_dir: "pipeline-data"        # Audio + encounter metadata (synced from provider)
+    output_dir: "pipeline-output"    # Pipeline-generated outputs
+    config_dir: "config"             # Authoritative config (providers, templates, dictionaries)
+
+# ---------------------------------------------------------------------------
+# Sync configuration
+# ---------------------------------------------------------------------------
+sync:
+  # Template + provider profile sync (pipeline → provider-facing)
+  config_sync:
+    enabled: true
+    interval_seconds: 7200           # Every 2 hours
+    items:
+      - providers                    # config/providers/*.yaml
+      - templates                    # config/templates/*.yaml
+      - dictionaries                 # config/dictionaries/*.txt
+      - ehr_stub                     # config/ehr_stub/ (patient roster)
+
+  # Output sync (pipeline → provider-facing)
+  output_sync:
+    enabled: true
+    # Overwrite policy: only if source timestamp > destination timestamp
+    overwrite_policy: "newer_only"
+
+  # Batch sync settings
+  batch:
+    # Maximum concurrent file transfers
+    max_concurrent: 4
+    # Chunk size for large file transfers (bytes)
+    chunk_size: 10485760             # 10 MB
+    # Timeout per file transfer (seconds)
+    timeout_seconds: 300
+
+# ---------------------------------------------------------------------------
+# Feature flags (per server role)
+# ---------------------------------------------------------------------------
+features:
+  provider_facing:
+    # Read-only views
+    dashboard: true
+    view_encounters: true
+    view_providers: true
+    view_specialties: true
+    view_templates: true
+    view_quality: true
+    # Audio recording + pipeline trigger (proxied to pipeline server)
+    record_audio: true
+    trigger_pipeline: true
+    # EHR access (local only)
+    ehr_access: true
+    patient_search: true
+    # Admin operations (DISABLED on provider-facing)
+    create_providers: false
+    edit_providers: false
+    create_templates: false
+    edit_templates: false
+    create_specialties: false
+    edit_specialties: false
+
+  processing_pipeline:
+    # Full admin access
+    dashboard: true
+    view_encounters: true
+    view_providers: true
+    view_specialties: true
+    view_templates: true
+    view_quality: true
+    # Pipeline execution
+    run_pipeline: true
+    batch_processing: true
+    # Admin operations (ENABLED on pipeline server)
+    create_providers: true
+    edit_providers: true
+    create_templates: true
+    edit_templates: true
+    create_specialties: true
+    edit_specialties: true
+    # No direct EHR access (EHR data stays on provider-facing)
+    ehr_access: false
+    patient_search: false
+
+# ---------------------------------------------------------------------------
+# Security & PHI isolation
+# ---------------------------------------------------------------------------
+security:
+  # PHI fields that MUST NOT be sent to the pipeline server
+  phi_fields:
+    - patient_demographics.json      # Name, DOB, MRN
+    - patient_context.yaml           # Legacy context with PHI
+    - final_soap_note.md             # Gold standard (contains patient names)
+  # Fields safe to send to pipeline server
+  safe_for_pipeline:
+    - audio files                    # Voice data (needed for ASR)
+    - encounter_details.json         # Mode, visit_type, provider_id, date
+  # API authentication between servers (shared secret)
+  inter_server_auth:
+    enabled: false                   # Enable in production
+    # Set via environment variable: AI_SCRIBE_INTER_SERVER_SECRET
+    secret_env_var: "AI_SCRIBE_INTER_SERVER_SECRET"
+
+# ---------------------------------------------------------------------------
+# Pipeline server GPU configuration
+# ---------------------------------------------------------------------------
+gpu:
+  # ASR model settings
+  asr:
+    device: "cuda"
+    # VRAM budget tracking
+    vram_budget_gb: 23               # A10G
+    whisperx_peak_gb: 12
+  # LLM settings
+  llm:
+    ollama_url: "http://localhost:11434"
+    keep_alive: "0"                  # Unload after each request (VRAM management)
+  # Two-pass mode for batch processing (prevents OOM)
+  two_pass_batch: true

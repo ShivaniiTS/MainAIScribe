@@ -1,0 +1,14 @@
+{
+  "encounter_id": "203962",
+  "date_of_exam": "2026-03-10",
+  "date_of_accident": "2023-10-13",
+  "case_number": "DC101323",
+  "visit_type": "follow_up",
+  "location": "HYATTSVILLE",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": ""
+}

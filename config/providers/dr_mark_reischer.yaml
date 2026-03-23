@@ -1,0 +1,62 @@
+asr_override: null
+correction_count: 0
+credentials: DC
+custom_vocabulary:
+- Excelsia
+- chiropractic
+- subluxation
+- manipulation
+- adjustment
+- cervicothoracic
+- thoracolumbar
+- lumbosacral
+- paraspinal
+- musculoskeletal
+- radiculopathy
+- neuropathy
+- nerve conduction
+- electromyography
+- EMG
+- NCV
+- carpal tunnel
+- ulnar
+- median
+- electrodiagnostic
+- myofascial
+- interferential
+id: dr_mark_reischer
+llm_override: null
+name: Dr. Mark Reischer
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: excelsia_injury_care
+quality_history:
+- date: '2026-03-14'
+  samples: 61
+  score: 4.349
+  version: v8
+quality_scores:
+  v8: 4.349
+specialty: chiropractic
+style_directives:
+- Write in third person (e.g. 'The patient presents...' not 'Patient presents')
+- Use past tense for examination findings and interval history
+- Spell out abbreviations on first use (e.g. 'nerve conduction velocity (NCV)')
+- List diagnoses in the Assessment as numbered items
+- Mirror Assessment numbering in the Plan (Plan item 1 corresponds to Assessment item
+  1)
+- Use formal clinical language; avoid contractions
+- Include electrodiagnostic findings (EMG/NCV) in the Assessment when performed
+- Document nerve conduction study results with specific nerve and segment details
+- For auto accident cases, reference the accident date and mechanism in the HPI
+- Document work status and return-to-work recommendations in the Plan
+style_model_version: v0
+template_routing:
+  assume_care: chiro_follow_up
+  default: chiro_follow_up
+  discharge: chiro_follow_up
+  follow_up: chiro_follow_up
+  initial: chiro_initial_eval
+  initial_evaluation: chiro_initial_eval

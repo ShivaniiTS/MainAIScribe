@@ -1,0 +1,78 @@
+digraph ai_scribe {
+	bgcolor=white compound=true dpi=150 fontname=Helvetica fontsize=12 nodesep=0.40 pad=0.6 rankdir=TB ranksep=0.55
+	{
+		rank=same
+		ctx [label=<<b>CONTEXT</b><br/><font point-size="9">Load patient context</font>> fillcolor="#1E1B4B" fontcolor=white fontname="Helvetica-Bold" fontsize=11 height=0.7 margin="0.12,0.08" shape=box style="filled,rounded" width=2.0]
+		ehr_stub [label=<<b>StubEHRServer  (mcp_servers/ehr/)</b><br/><font point-size="9">Reads patient_context.yaml per sample</font><br/><font point-size="9">get_patient() · get_problem_list()</font><br/><font point-size="9">get_medications() · get_allergies()</font><br/><font point-size="9">[FUTURE] FHIRServer (R4) — same interface</font>> color="#B45309" fillcolor="#B45309" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	{
+		rank=same
+		cap [label=<<b>CAPTURE</b><br/><font point-size="9">Audio I/O · VAD · noise suppress</font>> fillcolor="#1E1B4B" fontcolor=white fontname="Helvetica-Bold" fontsize=11 height=0.7 margin="0.12,0.08" shape=box style="filled,rounded" width=2.0]
+		cap_tools [label=<<b>Audio Tools  (mcp_servers/audio/)</b><br/><font point-size="9">Silero VAD — silence detection</font><br/><font point-size="9">DeepFilterNet — noise suppression</font><br/><font point-size="9">ffmpeg — format conversion</font><br/><font point-size="9">[FUTURE] NeMo streaming ASR</font>> color="#78716C" fillcolor="#F8FAFC" fontcolor="#1C1917" fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	{
+		rank=same
+		tx [label=<<b>TRANSCRIBE</b><br/><font point-size="9">ASR · diarization · post-process</font>> fillcolor="#1E1B4B" fontcolor=white fontname="Helvetica-Bold" fontsize=11 height=0.7 margin="0.12,0.08" shape=box style="filled,rounded" width=2.0]
+		asr_wx [label=<<b>WhisperXServer  (mcp_servers/asr/)  [DEFAULT]</b><br/><font point-size="9">faster-whisper · CTranslate2 · CUDA · VRAM ≈ 10–12 GB</font><br/><font point-size="9">Model: whisper-large-v3 · beam_size=5</font><br/><font point-size="9">pyannote 3.1 diarization · wav2vec2 word alignment</font><br/><font point-size="9">condition_on_previous_text: True (dictation) / False (ambient)</font><br/><font point-size="9">hotwords: top-100 provider vocab (logit boost)</font>> color="#00B27A" fillcolor="#00B27A" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+		postproc [label=<<b>PostProcessor  (postprocessor/)</b><br/><font point-size="9">medasr_postprocessor.py · 12-stage rule-based</font><br/><font point-size="9">98 K OpenMedSpel dictionary (GPL)</font><br/><font point-size="9">CTC stutter −90% · char stutter −99% · term fix −87%</font>> color="#00B27A" fillcolor="#00B27A" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	{
+		rank=same
+		asr_r [label=<<font point-size="9">asr_router</font>> fillcolor="#312E81" fontcolor=white fontsize=9 height=0.55 shape=diamond style=filled width=0.8]
+		asr_lora [label=<<b>WhisperXLoraServer  [OPT-IN]</b><br/><font point-size="9">peft LoRA (r=8) · use_lora=True in registry</font><br/><font point-size="9">Ambient: −11–13 % WER · Dictation: NOT ready</font><br/><font point-size="9">Requires ≥ 30 min verbatim audio per provider</font><br/><font point-size="9">models/whisper_lora/{provider_id}/</font>> color="#475569" fillcolor="#E2E8F0" fontcolor="#475569" fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded,dashed" width=3.8]
+	}
+	{
+		rank=same
+		note [label=<<b>NOTE</b><br/><font point-size="9">Prompt assembly · LLM · parse</font>> fillcolor="#1E1B4B" fontcolor=white fontname="Helvetica-Bold" fontsize=11 height=0.7 margin="0.12,0.08" shape=box style="filled,rounded" width=2.0]
+		llm_ol [label=<<b>OllamaServer  (mcp_servers/llm/)  [DEFAULT]</b><br/><font point-size="9">OpenAI-compat · localhost:11434/v1 · keep_alive=0</font><br/><font point-size="9">qwen2.5:14b (Apache 2.0) · VRAM ≈ 8 GB</font><br/><font point-size="9">Tasks: note_generation · coding · patient_summary</font><br/><font point-size="9">[FUTURE] vLLM / Claude / OpenAI — same LLMEngine interface</font>> color="#00B27A" fillcolor="#00B27A" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+		tpl_srv [label=<<b>TemplateServer  (mcp_servers/data/)</b><br/><font point-size="9">config/templates/*.yaml · get_template(specialty, visit_type)</font><br/><font point-size="9">ortho_follow_up (6 §) · ortho_initial_eval (12 §) · soap_default</font><br/><font point-size="9">Routing: provider_id + visit_type → YAML → section prompts</font>> color="#00B27A" fillcolor="#00B27A" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	{
+		rank=same
+		llm_r [label=<<font point-size="9">llm_router</font>> fillcolor="#312E81" fontcolor=white fontsize=9 height=0.55 shape=diamond style=filled width=0.8]
+		prov_mgr [label=<<b>Provider Profiles  (config/providers/)</b><br/><font point-size="9">{provider_id}.yaml · ProviderManager singleton</font><br/><font point-size="9">style_directives · custom_vocabulary (22 terms)</font><br/><font point-size="9">asr_overrides · template_routing · quality_history</font><br/><font point-size="9">Dr. Faraz Rahman: 10 directives · 22 vocab · 4 routes</font>> color="#B45309" fillcolor="#F8FAFC" fontcolor="#1C1917" fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	{
+		rank=same
+		rev [label=<<b>REVIEW</b><br/><font point-size="9">HITL review · auto-approve stub</font>> fillcolor="#1E1B4B" fontcolor=white fontname="Helvetica-Bold" fontsize=11 height=0.7 margin="0.12,0.08" shape=box style="filled,rounded" width=2.0]
+		qual_fw [label=<<b>Quality Framework  (quality/)</b><br/><font point-size="9">LLM-as-judge: always llama3.1:latest (cross-model fair eval)</font><br/><font point-size="9">Dimensions: accuracy · completeness · no-hallucination</font><br/><font point-size="9">            structure · clinical language  (each 1–5)</font><br/><font point-size="9">fact_extractor: meds / diagnoses / exam findings precision/recall</font>> color="#6D28D9" fillcolor="#F8FAFC" fontcolor="#1C1917" fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	{
+		rank=same
+		del [label=<<b>DELIVERY</b><br/><font point-size="9">EHR push · clipboard · output files</font>> fillcolor="#1E1B4B" fontcolor=white fontname="Helvetica-Bold" fontsize=11 height=0.7 margin="0.12,0.08" shape=box style="filled,rounded" width=2.0]
+		output_files [label=<<b>Output Files  (output/)</b><br/><font point-size="9">audio_transcript_v{N}.txt — standalone per version</font><br/><font point-size="9">generated_note_v{N}.md — clinical note Markdown</font><br/><font point-size="9">comparison_v{N}.md — gold vs generated side-by-side</font><br/><font point-size="9">quality_report_v{N}.md · batch_report_v{N}.md</font>> color="#0369A1" fillcolor="#F8FAFC" fontcolor="#1C1917" fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=3.8]
+	}
+	ctx -> cap [label=context_packet fontname=Helvetica fontsize=9]
+	cap -> tx [label=audio_segments fontname=Helvetica fontsize=9]
+	tx -> asr_r [fontname=Helvetica fontsize=9]
+	asr_r -> note [label="conf ≥ 0.40" fontname=Helvetica fontsize=9]
+	note -> llm_r [fontname=Helvetica fontsize=9]
+	llm_r -> rev [label="conf ≥ 0.50" fontname=Helvetica fontsize=9]
+	rev -> del [label=approved fontname=Helvetica fontsize=9]
+	ctx -> ehr_stub [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	cap -> cap_tools [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	tx -> asr_wx [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	tx -> postproc [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	asr_r -> asr_lora [color="#475569" constraint=false fontsize=8 style=dashed]
+	note -> llm_ol [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	note -> tpl_srv [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	llm_r -> prov_mgr [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	rev -> qual_fw [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	del -> output_files [color="#94A3B8" constraint=false fontsize=8 style=dashed]
+	estate [label=<<b>EncounterState (Pydantic v2)</b> — shared across all nodes   <font point-size="9">encounter_id · provider_id · recording_mode (AMBIENT | DICTATION) · context_packet · audio_segments · transcript · generated_note · final_note · delivery_result · errors[] · EncounterMetrics</font>> fillcolor="#C7D2FE" fontcolor="#1E1B4B" fontname=Helvetica fontsize=10 height=0.50 shape=rectangle style=filled width=8.0]
+	del -> estate [style=invis]
+	reg [label=<<b>EngineRegistry</b>  (mcp_servers/registry.py)<br/><font point-size="9">get_asr(provider_id, use_lora=False) · get_llm() · get_ehr() · get_with_failover() · health_check_all() · Config: config/engines.yaml — zero-code engine swap</font>> fillcolor="#00B27A" fontcolor=white fontname="Helvetica-Bold" fontsize=11 margin="0.15,0.10" shape=box style="filled,rounded" width=9.0]
+	estate -> reg [style=invis]
+	qual_trend [label=<<b>Quality Progress  (v1 → v6, judge: llama3.1:latest, 22 gold samples)</b><br/><font point-size="9">v1  Session 4    basic end-to-end pipeline                     3.50 / 5.0    v2  Session 5    templates + specialty dictionaries             4.30 / 5.0<br/>v3  Session 7    EHR patient context + demographics             4.34 / 5.0    v4  Session 8    provider profiles + vocab + style directives   4.38 / 5.0<br/>v5  Session 10   ASR inference knobs + LoRA evaluation          4.35 / 5.0    <b>v6  Session 10c  qwen2.5:14b · two-pass eval                4.44 / 5.0  ✓</b></font>> fillcolor="#F1F5F9" fontcolor="#1C1917" fontname=Helvetica fontsize=10 margin="0.15,0.10" shape=box style="filled,rounded" width=12.0]
+	reg -> qual_trend [style=invis]
+	subgraph cluster_ui {
+		color="#0369A1" fillcolor="#EFF6FF" fontname="Helvetica-Bold" fontsize=12 label="  API + WEB UI  " labeljust=l labelloc=t penwidth=2 style=filled
+		api [label=<<b>FastAPI Backend  (api/)  ·  :8000</b><br/><font point-size="9">GET /encounters/{id}/transcript · /note · /audio · /comparison · /quality</font><br/><font point-size="9">POST /encounters · POST /{id}/upload  (triggers pipeline async)</font><br/><font point-size="9">GET /providers · GET /quality/aggregate · /samples · /dimensions</font><br/><font point-size="9">WS /ws/encounters/{id}  — real-time stage progress events</font><br/><font point-size="9">Data: output/ directory tree (no DB required)</font>> fillcolor="#0369A1" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=5.5]
+		web [label=<<b>Next.js Web App  (client/web/)  ·  :3000</b><br/><font point-size="9">Dashboard: KPI cards · quality trend (Recharts) · encounters table</font><br/><font point-size="9">Samples: filterable by version / mode / score range</font><br/><font point-size="9">Sample Detail  6 tabs:  Transcript (audio player + v-picker)</font><br/><font point-size="9">  Clinical Note (Markdown + v-picker) · Comparison (gold vs gen)</font><br/><font point-size="9">  Gold Standard · Quality Scores · Compare Versions (LCS diff)</font><br/><font point-size="9">Providers: quality history · Upload: drag-and-drop MP3/WAV</font>> fillcolor="#0369A1" fontcolor=white fontname="Helvetica-Bold" fontsize=10 margin="0.14,0.09" shape=box style="filled,rounded" width=5.5]
+		{
+			rank=same
+		}
+		web -> api [label="REST + WebSocket" fontsize=9]
+	}
+	qual_trend -> api [style=invis]
+}

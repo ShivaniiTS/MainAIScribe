@@ -1,0 +1,67 @@
+# deploy/docker-compose.pipeline.yml — Processing pipeline server deployment
+#
+# Runs the pipeline API + admin web UI + Ollama LLM inference.
+# GPU passthrough required for ASR (WhisperX) and LLM (Ollama).
+#
+# Usage:
+#   docker-compose -f deploy/docker-compose.pipeline.yml up
+#
+# Note: WhisperX is typically run outside Docker for direct GPU access.
+#       Ollama is also typically run natively. This compose file runs the
+#       API and admin web UI in Docker with volume mounts.
+
+version: "3.9"
+
+services:
+  # ── Pipeline API ───────────────────────────────────────────────────────
+  pipeline-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.pipeline
+    ports:
+      - "${PIPELINE_API_PORT:-8100}:8100"
+    volumes:
+      - ${PIPELINE_DATA_DIR:-../pipeline-data}:/app/pipeline-data
+      - ${PIPELINE_OUTPUT_DIR:-../pipeline-output}:/app/pipeline-output
+      - ${CONFIG_DIR:-../config}:/app/config
+    environment:
+      - AI_SCRIBE_SERVER_ROLE=processing-pipeline
+      - AI_SCRIBE_DATA_DIR=/app/pipeline-data
+      - AI_SCRIBE_OUTPUT_DIR=/app/pipeline-output
+      - AI_SCRIBE_CONFIG_DIR=/app/config
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # ── Admin web UI ───────────────────────────────────────────────────────
+  admin-web:
+    build:
+      context: ../client/web
+      dockerfile: Dockerfile
+    ports:
+      - "${ADMIN_WEB_PORT:-3100}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:${PIPELINE_API_PORT:-8100}
+      - NEXT_PUBLIC_SERVER_ROLE=processing-pipeline
+    depends_on:
+      - pipeline-api
+    restart: unless-stopped
+
+  # ── Ollama (LLM inference) ─────────────────────────────────────────────
+  # Uncomment to run Ollama in Docker (requires GPU passthrough)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   restart: unless-stopped
+
+# volumes:
+#   ollama_data:

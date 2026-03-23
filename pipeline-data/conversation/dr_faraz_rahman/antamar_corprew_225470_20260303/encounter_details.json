@@ -1,0 +1,17 @@
+{
+  "encounter_id": "225470",
+  "date_of_exam": "2026-03-03",
+  "date_of_accident": "2026-01-02",
+  "case_number": "AA010226",
+  "visit_type": "follow_up",
+  "mode": "conversation",
+  "location": "PATTERSON",
+  "provider": {
+    "first_name": "FARAZ",
+    "last_name": "RAHMAN",
+    "full_name": "FARAZ RAHMAN"
+  },
+  "supervising_physician": "",
+  "provider_id": "dr_faraz_rahman",
+  "audio_file": "conversation_audio.mp3"
+}

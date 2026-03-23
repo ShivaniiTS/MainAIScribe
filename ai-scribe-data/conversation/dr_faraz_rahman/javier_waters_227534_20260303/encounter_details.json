@@ -1,0 +1,15 @@
+{
+  "encounter_id": "227534",
+  "date_of_exam": "2026-03-03",
+  "date_of_accident": "",
+  "case_number": "AA022726",
+  "visit_type": "initial",
+  "mode": "conversation",
+  "location": "PATTERSON",
+  "provider": {
+    "first_name": "FARAZ",
+    "last_name": "RAHMAN",
+    "full_name": "FARAZ RAHMAN"
+  },
+  "supervising_physician": ""
+}

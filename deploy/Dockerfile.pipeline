@@ -1,0 +1,34 @@
+# deploy/Dockerfile.pipeline — Processing pipeline server (GPU)
+#
+# Runs: pipeline API, pipeline execution (ASR + LLM),
+# admin web UI, template/provider/specialty CRUD.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for GPU workloads
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies (full install with GPU/ML deps)
+COPY pyproject.toml .
+RUN pip install --no-cache-dir ".[api,gpu]" || pip install --no-cache-dir ".[api]"
+
+# Copy source
+COPY api/ api/
+COPY config/ config/
+COPY mcp_servers/ mcp_servers/
+COPY orchestrator/ orchestrator/
+COPY postprocessor/ postprocessor/
+COPY quality/ quality/
+COPY output/ output/
+COPY scripts/ scripts/
+
+ENV AI_SCRIBE_SERVER_ROLE=processing-pipeline
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8100
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8100"]

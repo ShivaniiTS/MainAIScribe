@@ -1,0 +1,50 @@
+# Orthopedic Follow-up Visit template
+name: "Orthopedic Follow-up"
+specialty: orthopedic
+visit_type: follow_up
+
+header_fields:
+  - patient_name
+  - date_of_birth
+  - date_of_service
+  - provider_name
+  - location
+
+sections:
+  - id: interval_history
+    label: "INTERVAL HISTORY"
+    required: true
+    prompt_hint: "Changes since last visit: symptom progression (better/worse/same), treatments received (PT, injections, medications), compliance, new symptoms"
+
+  - id: current_medications
+    label: "CURRENT MEDICATIONS"
+    required: false
+    prompt_hint: "List only if changed since last visit"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "Focused exam of affected regions: ROM in degrees, strength, special tests, neurovascular status, comparison to prior visit where possible"
+
+  - id: imaging
+    label: "IMAGING / DIAGNOSTICS"
+    required: false
+    prompt_hint: "Any new imaging reviewed; modality, body part, findings; omit if not mentioned"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered diagnoses with current status (improving/stable/worsening) vs prior visit"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered plan: medication changes, therapy continuation/modification, referrals, work status, next follow-up"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units
+  rom_format: degrees

@@ -1,0 +1,111 @@
+asr_override: null
+correction_count: 0
+credentials: MD
+custom_vocabulary:
+- Excelsia
+- Spurling
+- Tinel
+- Phalen
+- Hawkins
+- Neer
+- McMurray
+- Lachman
+- paralumbar
+- pyannote
+- physiatry
+- physiatrist
+- facet
+- foraminotomy
+- discectomy
+- laminectomy
+- ALIF
+- TLIF
+- PLIF
+- WAD
+- MVA
+- MVC
+id: dr_faraz_rahman
+llm_override: null
+name: Dr. Faraz Rahman
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: excelsia_injury_care
+quality_history:
+- date: '2026-03-11'
+  samples: 22
+  score: 4.38
+  version: v4
+- date: '2026-03-12'
+  samples: 22
+  score: 4.323
+  version: v2
+- date: '2026-03-12'
+  samples: 22
+  score: 4.352
+  version: v5
+- date: '2026-03-12'
+  samples: 22
+  score: 4.334
+  version: v5
+- date: '2026-03-12'
+  samples: 10
+  score: 4.01
+  version: v7q14
+- date: '2026-03-13'
+  samples: 10
+  score: 4.515
+  version: v7q14
+- date: '2026-03-13'
+  samples: 10
+  score: 4.35
+  version: v7q32
+- date: '2026-03-13'
+  samples: 22
+  score: 4.443
+  version: v6
+- date: '2026-03-13'
+  samples: 61
+  score: 4.31
+  version: v7
+- date: '2026-03-14'
+  samples: 61
+  score: 4.296
+  version: v7
+- date: '2026-03-14'
+  samples: 61
+  score: 4.349
+  version: v8
+quality_scores:
+  v2: 4.323
+  v4: 4.38
+  v5: 4.334
+  v6: 4.443
+  v7: 4.296
+  v7q14: 4.515
+  v7q32: 4.35
+  v8: 4.349
+specialty: orthopedic
+style_directives:
+- Write in third person (e.g. 'The patient presents...' not 'Patient presents')
+- Use past tense for examination findings and interval history
+- Spell out abbreviations on first use (e.g. 'range of motion (ROM)')
+- Include ROM measurements in degrees where documented
+- List diagnoses in the Assessment as numbered items
+- Mirror Assessment numbering in the Plan (Plan item 1 corresponds to Assessment item
+  1)
+- 'When a section is unchanged from prior visit, state: ''<Section> reviewed and unchanged
+  from prior evaluation'''
+- Use formal clinical language; avoid contractions
+- Document work status (return to work, modified duty, off work) in the Plan when
+  mentioned
+- For MVA cases, reference the accident date and mechanism in the Subjective/HPI
+style_model_version: v0
+template_routing:
+  assume_care: ortho_follow_up
+  default: ortho_follow_up
+  discharge: ortho_follow_up
+  follow_up: ortho_follow_up
+  initial: ortho_initial_eval
+  initial_evaluation: ortho_initial_eval

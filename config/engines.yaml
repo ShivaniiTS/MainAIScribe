@@ -1,0 +1,200 @@
+# config/engines.yaml
+#
+# Engine configuration for AI Scribe.
+# ALL engine/model selection is driven by this file — zero code changes to swap providers.
+# Secrets are always environment variables (api_key_env), never stored here.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LLM inference servers
+# ─────────────────────────────────────────────────────────────────────────────
+llm:
+  default_server: ollama
+
+  servers:
+    ollama:                             # DEFAULT — local Ollama (dev + prod)
+      type: ollama
+      url: "http://localhost:11434/v1"
+      models:
+        note_generation:  "qwen2.5:14b"   # v7 benchmark: 4.51/5.0 (vs 32b: 4.35, llama3.1: 4.33)
+        coding:           "qwen2.5:14b"
+        patient_summary:  "qwen2.5:14b"
+        command_parse:    "qwen2.5:14b"
+
+    vllm:                               # High-throughput production alternative
+      type: vllm
+      url: "http://localhost:8000/v1"
+      models:
+        note_generation:  "Qwen/Qwen2.5-32B-Instruct-AWQ"
+        coding:           "Qwen/Qwen2.5-32B-Instruct-AWQ"
+        patient_summary:  "Qwen/Qwen2.5-14B-Instruct-AWQ"
+        command_parse:    "Qwen/Qwen2.5-7B-Instruct-AWQ"
+
+    claude:                             # Cloud option (future)
+      type: openai_compatible
+      url: "https://api.anthropic.com/v1"
+      api_key_env: "ANTHROPIC_API_KEY"
+      models:
+        note_generation:  "claude-sonnet-4-6"
+        coding:           "claude-sonnet-4-6"
+        patient_summary:  "claude-haiku-4-5-20251001"
+        command_parse:    "claude-haiku-4-5-20251001"
+
+    openai:                             # Cloud option (future)
+      type: openai_compatible
+      url: "https://api.openai.com/v1"
+      api_key_env: "OPENAI_API_KEY"
+      models:
+        note_generation:  "gpt-4o"
+        coding:           "gpt-4o"
+        patient_summary:  "gpt-4o-mini"
+        command_parse:    "gpt-4o-mini"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ASR (speech-to-text) servers
+# ─────────────────────────────────────────────────────────────────────────────
+asr:
+  default_server: whisperx
+
+  servers:
+    whisperx:                           # DEFAULT — batch, with diarization
+      type: whisperx
+      model: "large-v3"
+      device: "cuda"
+      compute_type: "float16"           # float16 | int8
+      diarization: true
+      hf_token_env: "HF_TOKEN"         # HuggingFace token for pyannote
+      min_speakers: 1
+      max_speakers: 5
+      language: "en"
+
+      # ── Provider-specific LoRA fine-tuning ─────────────────────────────
+      # Disabled by default. Enable per-provider once ≥30 min of *verbatim*
+      # transcript data has been collected via the correction-capture loop.
+      # See docs/architecture.md §10.3 for the data flywheel strategy.
+      # To enable for a specific provider, set asr_lora_enabled: true in
+      # their provider profile (config/providers/{id}.yaml).
+      lora_enabled: false               # global kill-switch (false = base model always used)
+
+      # ── Provider-specific inference knobs (set per provider profile) ───
+      # These are exposed here for documentation; per-provider overrides
+      # live in config/providers/{provider_id}.yaml under asr_overrides:
+      #
+      # condition_on_previous_text: true   # true for dictation, false for ambient
+      #                                    # (ambient: prevents patient speech conditioning)
+      # beam_size: 5                       # increase for accented/noisy audio
+      # vad_filter: true                   # VAD pre-filter before transcription
+      # vad_threshold: 0.5                 # lower for soft-spoken providers (0.3–0.7)
+      # no_speech_threshold: 0.6           # lower for providers with frequent pauses
+      # compression_ratio_threshold: 2.4   # raise for repetitive clinical phrasing
+      # hotwords: []                       # per-provider token-level boost (specialty terms)
+      #                                    # more targeted than initial_prompt prefix
+
+    nemo_streaming:                     # Real-time streaming ASR
+      type: nemo
+      model: "nvidia/nemotron-speech-streaming-en-0.6b"
+      device: "cuda"
+      streaming: true
+      chunk_size_ms: 160
+
+    nemo_multitalker:                   # Real-time multi-speaker streaming
+      type: nemo_multitalker
+      model: "nvidia/multitalker-parakeet-streaming-0.6b-v1"
+      device: "cuda"
+      streaming: true
+      max_speakers: 5
+      chunk_size_ms: 160
+
+    deepgram:                           # Cloud option (future)
+      type: deepgram
+      api_key_env: "DEEPGRAM_API_KEY"
+      model: "nova-3-medical"
+      diarization: true
+
+    aws_transcribe:                     # Cloud option (future)
+      type: aws_transcribe
+      region_env: "AWS_REGION"
+      specialty: "PRIMARYCARE"          # PRIMARYCARE | CARDIOLOGY | NEUROLOGY | ONCOLOGY | RADIOLOGY | UROLOGY
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Audio processing
+# ─────────────────────────────────────────────────────────────────────────────
+audio_processing:
+  noise_suppression:
+    default: deepfilternet
+    options: [deepfilternet, rnnoise, passthrough]
+    aggressiveness: moderate            # mild | moderate | aggressive
+
+  vad:
+    default: silero
+    sensitivity: 0.5                   # 0.0 (permissive) – 1.0 (strict)
+    options: [silero, webrtc]
+
+  format_conversion:
+    default: ffmpeg
+    target_sample_rate: 16000
+    target_format: wav
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EHR adapters
+# ─────────────────────────────────────────────────────────────────────────────
+ehr:
+  default_adapter: manual
+
+  adapters:
+    manual:
+      type: manual
+
+    extension:
+      type: browser_extension
+      ws_port: 9001                     # WebSocket port the extension connects to
+
+    fhir:
+      type: fhir
+      base_url_env: "FHIR_BASE_URL"
+      client_id_env: "FHIR_CLIENT_ID"
+      client_secret_env: "FHIR_CLIENT_SECRET"
+      auth_type: "smart_on_fhir"        # smart_on_fhir | basic | bearer
+
+    hl7v2:
+      type: hl7v2
+      host_env: "HL7_HOST"
+      port_env: "HL7_PORT"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Post-processing
+# ─────────────────────────────────────────────────────────────────────────────
+post_processing:
+  mode: hybrid                         # rules_only | ml_only | hybrid
+  rules_pipeline: true
+  ml_model_path: null                  # Populated after ByT5 training (Session 12)
+  medical_wordlist: "postprocessor/medical_wordlist.txt"
+  confidence_threshold: 0.85
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Database and storage
+# ─────────────────────────────────────────────────────────────────────────────
+database:
+  url_env: "DATABASE_URL"              # postgresql+asyncpg://user:pass@host:5432/aiscribe
+
+storage:
+  type: minio                          # minio | local
+  endpoint_env: "MINIO_ENDPOINT"      # http://localhost:9000
+  access_key_env: "MINIO_ACCESS_KEY"
+  secret_key_env: "MINIO_SECRET_KEY"
+  bucket: "ai-scribe-audio"
+  local_fallback: "data/audio"        # Used when type: local or MinIO unavailable
+
+cache:
+  url_env: "VALKEY_URL"               # redis://localhost:6379/0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Note templates
+# ─────────────────────────────────────────────────────────────────────────────
+templates:
+  default: "soap_default"
+  path: "config/templates"
+  available:
+    - soap_default
+    - ortho_followup
+    - psych_progress
+    - peds_wellchild

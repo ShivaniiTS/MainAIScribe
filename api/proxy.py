@@ -1,0 +1,137 @@
+"""
+api/proxy.py — Provider-facing server proxy to the processing pipeline.
+
+When the provider-facing server receives pipeline trigger requests
+(create encounter, upload audio, rerun), it proxies them to the
+processing pipeline server's API. This keeps the pipeline execution
+on the GPU server while the provider-facing server handles the
+client-facing interface.
+
+In processing-pipeline mode, no proxying is needed — the request runs locally.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import httpx
+import structlog
+
+from config.deployment import get_deployment_config, ServerRole
+
+logger = structlog.get_logger()
+
+# Persistent async client (reused across requests)
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None:
+        cfg = get_deployment_config()
+        headers = {}
+        if cfg.inter_server_auth.enabled:
+            secret = cfg.inter_server_auth.secret
+            if secret:
+                headers["X-Inter-Server-Auth"] = secret
+        _client = httpx.AsyncClient(
+            base_url=cfg.pipeline_api_url,
+            headers=headers,
+            timeout=httpx.Timeout(300.0, connect=10.0),
+        )
+    return _client
+
+
+def needs_proxy() -> bool:
+    """Return True if this server should proxy to a remote pipeline server."""
+    cfg = get_deployment_config()
+    return cfg.role == ServerRole.PROVIDER_FACING
+
+
+async def proxy_upload(
+    audio_bytes: bytes,
+    audio_filename: str,
+    sample_id: str,
+    mode: str,
+    provider_id: str,
+    encounter_details: dict[str, Any],
+) -> dict:
+    """Upload encounter files to the pipeline server."""
+    client = _get_client()
+    resp = await client.post(
+        "/pipeline/upload",
+        files={"audio": (audio_filename, audio_bytes, "audio/mpeg")},
+        data={
+            "sample_id": sample_id,
+            "mode": mode,
+            "provider_id": provider_id,
+            "encounter_details": json.dumps(encounter_details),
+        },
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def proxy_trigger(job_id: str, mode: str, provider_id: str, visit_type: str) -> dict:
+    """Trigger pipeline execution on the pipeline server."""
+    client = _get_client()
+    resp = await client.post(
+        f"/pipeline/trigger/{job_id}",
+        json={
+            "mode": mode,
+            "provider_id": provider_id,
+            "visit_type": visit_type,
+        },
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def proxy_status(job_id: str) -> dict:
+    """Poll pipeline status from the pipeline server."""
+    client = _get_client()
+    resp = await client.get(f"/pipeline/status/{job_id}")
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def proxy_get_note(sample_id: str, version: str = "latest") -> dict:
+    """Fetch generated note from the pipeline server."""
+    client = _get_client()
+    resp = await client.get(
+        f"/pipeline/output/{sample_id}/note",
+        params={"version": version},
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def proxy_get_transcript(sample_id: str, version: str = "latest") -> dict:
+    """Fetch transcript from the pipeline server."""
+    client = _get_client()
+    resp = await client.get(
+        f"/pipeline/output/{sample_id}/transcript",
+        params={"version": version},
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def proxy_batch_outputs(sample_ids: list[str], since: str = "") -> dict:
+    """Batch retrieve output manifests from the pipeline server."""
+    client = _get_client()
+    resp = await client.get(
+        "/pipeline/outputs/batch",
+        params={"sample_ids": ",".join(sample_ids), "since": since},
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def close() -> None:
+    """Close the persistent HTTP client."""
+    global _client
+    if _client:
+        await _client.aclose()
+        _client = None

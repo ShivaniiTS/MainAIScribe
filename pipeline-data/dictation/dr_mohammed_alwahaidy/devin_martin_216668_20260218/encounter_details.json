@@ -1,0 +1,17 @@
+{
+  "encounter_id": "216668",
+  "date_of_exam": "2026-02-18",
+  "date_of_accident": "2025-02-27",
+  "case_number": "WC22725",
+  "visit_type": "follow_up",
+  "location": "GLEN BURNIE",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": "CALEB ADEMILOYE, NP",
+  "mode": "dictation",
+  "provider_id": "dr_mohammed_alwahaidy",
+  "audio_file": "dictation.mp3"
+}

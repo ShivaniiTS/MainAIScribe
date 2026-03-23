@@ -1,0 +1,38 @@
+# Default SOAP Note template — used when no specialty-specific template matches.
+name: "Default SOAP Note"
+specialty: general
+visit_type: default
+
+header_fields:
+  - patient_name
+  - date_of_service
+  - provider_name
+  - specialty
+
+sections:
+  - id: subjective
+    label: "SUBJECTIVE"
+    required: true
+    prompt_hint: "Chief complaint, history of present illness, symptom onset and progression, aggravating/alleviating factors, prior treatment, current medications and allergies if mentioned"
+
+  - id: objective
+    label: "OBJECTIVE"
+    required: true
+    prompt_hint: "Vital signs if available, physical examination findings by body system"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered list of diagnoses or clinical impressions based on the encounter"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered treatment plan items corresponding to each assessment item: medications, procedures, referrals, follow-up"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units

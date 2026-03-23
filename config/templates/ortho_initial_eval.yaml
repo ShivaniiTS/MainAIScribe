@@ -1,0 +1,82 @@
+# Orthopedic Initial Evaluation template — used for first-visit post-trauma orthopedic encounters.
+name: "Orthopedic Initial Evaluation"
+specialty: orthopedic
+visit_type: initial_evaluation
+
+header_fields:
+  - patient_name
+  - date_of_birth
+  - date_of_service
+  - date_of_injury
+  - mechanism_of_injury
+  - provider_name
+  - referring_provider
+  - location
+
+sections:
+  - id: history_of_present_illness
+    label: "HISTORY OF PRESENT ILLNESS"
+    required: true
+    prompt_hint: "Include: mechanism of injury and date, emergency workup and findings (imaging, labs), prior treating providers, current symptoms with severity on 0-10 scale, pain character and location, aggravating and alleviating factors, functional limitations, hand dominance if relevant"
+
+  - id: past_medical_history
+    label: "PAST MEDICAL HISTORY"
+    required: true
+    prompt_hint: "Relevant medical conditions"
+
+  - id: past_surgical_history
+    label: "PAST SURGICAL HISTORY"
+    required: true
+    prompt_hint: "Prior surgical procedures with dates if mentioned"
+
+  - id: medications
+    label: "CURRENT MEDICATIONS"
+    required: true
+    prompt_hint: "Medication name, dose, frequency; write 'NKDA' if no known drug allergies mentioned for allergies"
+
+  - id: allergies
+    label: "ALLERGIES"
+    required: true
+
+  - id: family_history
+    label: "FAMILY HISTORY"
+    required: false
+    prompt_hint: "Relevant family medical history; 'Noncontributory' if not mentioned"
+
+  - id: social_history
+    label: "SOCIAL HISTORY"
+    required: false
+    prompt_hint: "Occupation, activity level, handedness, tobacco/alcohol/substance use if mentioned"
+
+  - id: review_of_systems
+    label: "REVIEW OF SYSTEMS"
+    required: true
+    prompt_hint: "Pertinent positives and negatives by system"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "For each affected body region include: inspection (deformity, swelling, ecchymosis), palpation (tenderness location), range of motion (degrees), strength grading, special tests (Spurling's, Tinel's, etc.), neurovascular status"
+
+  - id: imaging
+    label: "IMAGING / DIAGNOSTICS"
+    required: false
+    prompt_hint: "Imaging studies ordered or reviewed; modality, body part, findings; omit section if no imaging mentioned"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered diagnoses; note 'post-traumatic' etiology; include involved side (right/left/bilateral)"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered plan items corresponding to each assessment: medications (name, dose, frequency), therapy orders, referrals, work status, follow-up interval"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units
+  rom_format: degrees

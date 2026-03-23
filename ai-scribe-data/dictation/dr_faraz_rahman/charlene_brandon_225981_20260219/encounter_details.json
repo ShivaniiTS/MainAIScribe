@@ -1,0 +1,14 @@
+{
+  "encounter_id": "225981",
+  "date_of_exam": "2026-02-19",
+  "date_of_accident": "2026-01-18",
+  "case_number": "AA011826",
+  "visit_type": "follow_up",
+  "location": "COLUMBIA",
+  "provider": {
+    "first_name": "FARAZ",
+    "last_name": "RAHMAN",
+    "full_name": "FARAZ RAHMAN"
+  },
+  "supervising_physician": ""
+}

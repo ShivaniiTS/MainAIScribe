@@ -1,0 +1,14 @@
+{
+  "encounter_id": "226530",
+  "date_of_exam": "2026-03-02",
+  "date_of_accident": "2024-03-20",
+  "case_number": "AWC032024",
+  "visit_type": "follow_up",
+  "location": "N. HOWARD STREET",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": ""
+}

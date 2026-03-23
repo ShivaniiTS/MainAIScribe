@@ -1,0 +1,14 @@
+{
+  "encounter_id": "217763",
+  "date_of_exam": "2026-02-02",
+  "date_of_accident": "2025-05-13",
+  "case_number": "WC051325",
+  "visit_type": "follow_up",
+  "location": "N. HOWARD STREET",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": "PAUL PEACE, NP"
+}

@@ -1,0 +1,65 @@
+asr_override: null
+correction_count: 0
+credentials: DO
+custom_vocabulary:
+- Excelsia
+- paralumbar
+- paracervical
+- parathoracic
+- Spurling
+- Faber
+- sacroiliac
+- contusion
+- paraspinal
+- musculoskeletal
+- post-concussion
+- concussion
+- meloxicam
+- metoclopramide
+- lidocaine
+- cyclobenzaprine
+- electromyography
+- meniscus
+- effusion
+- lumbosacral
+- thoracolumbar
+- radiculopathy
+id: dr_caleb_ademiloye
+llm_override: null
+name: Dr. Caleb Ademiloye
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: excelsia_injury_care
+quality_history:
+- date: '2026-03-14'
+  samples: 61
+  score: 4.349
+  version: v8
+quality_scores:
+  v8: 4.349
+specialty: orthopedic
+style_directives:
+- Write in third person (e.g. 'The patient presents...' not 'Patient presents')
+- Use past tense for examination findings and interval history
+- Spell out abbreviations on first use (e.g. 'range of motion (ROM)')
+- Include ROM measurements in degrees where documented
+- List diagnoses in the Assessment as numbered items
+- Mirror Assessment numbering in the Plan (Plan item 1 corresponds to Assessment item
+  1)
+- Use formal clinical language; avoid contractions
+- Document work status (return to work, modified duty, off work) in the Plan when
+  mentioned
+- For workers' compensation cases, reference the injury date and mechanism in the
+  HPI
+- Include supervising physician name when applicable
+- Document DME dispensed and medication prescriptions with dosage in the Plan
+style_model_version: v0
+template_routing:
+  assume_care: ortho_initial_eval
+  default: ortho_follow_up
+  discharge: ortho_follow_up
+  follow_up: ortho_follow_up
+  initial: ortho_initial_eval
+  initial_evaluation: ortho_initial_eval

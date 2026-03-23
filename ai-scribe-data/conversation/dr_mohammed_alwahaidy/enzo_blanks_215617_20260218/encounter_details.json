@@ -1,0 +1,15 @@
+{
+  "encounter_id": "215617",
+  "date_of_exam": "2026-02-18",
+  "date_of_accident": "2024-11-09",
+  "case_number": "WC110924",
+  "visit_type": "follow_up",
+  "location": "GLEN BURNIE",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": "",
+  "mode": "conversation"
+}

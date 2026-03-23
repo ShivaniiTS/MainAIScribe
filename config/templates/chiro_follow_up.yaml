@@ -1,0 +1,40 @@
+# Chiropractic Follow-up Visit template — shorter, therapy-focused follow-up encounters.
+name: "Chiropractic Follow-up"
+specialty: chiropractic
+visit_type: follow_up
+
+header_fields:
+  - patient_name
+  - date_of_birth
+  - date_of_service
+  - date_of_injury
+  - provider_name
+  - location
+
+sections:
+  - id: history_of_present_illness
+    label: "HISTORY OF PRESENT ILLNESS"
+    required: true
+    prompt_hint: "Interval changes since last visit: symptom progression (better/worse/same), pain levels, treatments received (chiropractic adjustments, physical therapy, injections, medications), compliance with home exercise program, new complaints"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "Focused musculoskeletal exam: palpation findings (tenderness, spasm, trigger points), range of motion, strength, neurological screening if relevant, comparison to prior visit"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered diagnoses with current status (improving/stable/worsening); include sprain/strain classifications, radiculopathy if applicable"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered plan: chiropractic treatment frequency, physical therapy continuation/modification, medication changes, home exercises, work status, next follow-up interval"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units

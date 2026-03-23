@@ -1,0 +1,14 @@
+{
+  "encounter_id": "208349",
+  "date_of_exam": "2026-02-02",
+  "date_of_accident": "2024-07-03",
+  "case_number": "AA070324",
+  "visit_type": "follow_up",
+  "location": "WHITE MARSH",
+  "provider": {
+    "first_name": "MARK",
+    "last_name": "REISCHER",
+    "full_name": "MARK REISCHER"
+  },
+  "supervising_physician": ""
+}

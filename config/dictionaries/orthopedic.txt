@@ -1,0 +1,191 @@
+# Orthopedic specialty vocabulary
+# Anatomy
+cervical
+thoracic
+lumbar
+sacral
+coccyx
+vertebra
+vertebrae
+intervertebral
+facet
+foramen
+stenosis
+spondylosis
+spondylolisthesis
+annulus
+nucleus pulposus
+herniation
+radiculopathy
+myelopathy
+# Joints
+glenohumeral
+acromioclavicular
+sternoclavicular
+coracoacromial
+rotator cuff
+supraspinatus
+infraspinatus
+teres minor
+subscapularis
+labrum
+glenoid
+acetabulum
+meniscus
+meniscectomy
+patellofemoral
+tibiofemoral
+tibiofibular
+# Upper extremity
+clavicle
+scapula
+humerus
+olecranon
+epicondyle
+epicondylitis
+radial
+ulnar
+carpal
+metacarpal
+phalanx
+phalanges
+navicular
+scaphoid
+lunate
+triquetrum
+# Lower extremity
+iliac
+ischial
+femoral
+femur
+patella
+tibial
+fibular
+calcaneus
+talus
+metatarsal
+plantar fascia
+Achilles
+# ROM and measurements
+range of motion
+flexion
+extension
+abduction
+adduction
+internal rotation
+external rotation
+pronation
+supination
+dorsiflexion
+plantarflexion
+inversion
+eversion
+degrees
+# Special tests
+Spurling
+Tinel
+Phalen
+Finkelstein
+McMurray
+Lachman
+anterior drawer
+posterior drawer
+valgus stress
+varus stress
+drop arm
+Hawkins
+Neer
+Speed
+apprehension
+pivot shift
+# Conditions
+sprain
+strain
+contusion
+fracture
+dislocation
+subluxation
+impingement
+tendinopathy
+tendinitis
+bursitis
+synovitis
+capsulitis
+neuropathy
+paresthesia
+dysesthesia
+# Procedures
+arthroscopy
+arthroplasty
+arthrodesis
+osteotomy
+debridement
+chondroplasty
+ORIF
+fixation
+# Imaging
+MRI
+CT scan
+radiograph
+x-ray
+arthrogram
+# Treatments
+PT
+physical therapy
+occupational therapy
+chiropractic
+traction
+TENS
+ultrasound therapy
+cortisone
+corticosteroid
+injection
+immobilization
+splint
+orthosis
+# Medications
+naproxen
+meloxicam
+cyclobenzaprine
+methocarbamol
+diclofenac
+ibuprofen
+acetaminophen
+gabapentin
+pregabalin
+Medrol
+methylprednisolone
+# Descriptors
+post-traumatic
+posttraumatic
+bilateral
+unilateral
+ipsilateral
+contralateral
+proximal
+distal
+medial
+lateral
+anterior
+posterior
+superior
+inferior
+paracervical
+paralumbar
+trapezius
+paraspinal
+# Trauma
+MVA
+motor vehicle accident
+mechanism of injury
+airbag deployment
+restrained
+unrestrained
+rear-end
+rollover
+# Grading
+grade I
+grade II
+grade III
+VAS
+NRS

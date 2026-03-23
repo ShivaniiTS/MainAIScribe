@@ -1,0 +1,21 @@
+asr_override: null
+correction_count: 0
+credentials: TEST
+custom_vocabulary: []
+id: dr_test
+llm_override: null
+name: "Test Provider"
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: test_practice
+quality_history: []
+quality_scores: {}
+specialty: general
+style_directives: []
+style_model_version: v0
+template_routing:
+  default: soap_default
+  follow_up: soap_default
+  initial: soap_default

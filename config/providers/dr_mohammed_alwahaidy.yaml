@@ -1,0 +1,65 @@
+asr_override: null
+correction_count: 0
+credentials: DC
+custom_vocabulary:
+- Excelsia
+- chiropractic
+- subluxation
+- manipulation
+- adjustment
+- cervicothoracic
+- thoracolumbar
+- lumbosacral
+- sacroiliac
+- paraspinal
+- musculoskeletal
+- radiculopathy
+- myofascial
+- trigger point
+- interferential
+- electrostimulation
+- cryotherapy
+- thermotherapy
+- flexion-distraction
+- Activator
+- diversified
+- Thompson
+id: dr_mohammed_alwahaidy
+llm_override: null
+name: Dr. Mohammed Alwahaidy
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: excelsia_injury_care
+quality_history:
+- date: '2026-03-14'
+  samples: 61
+  score: 4.349
+  version: v8
+quality_scores:
+  v8: 4.349
+specialty: chiropractic
+style_directives:
+- Write in third person (e.g. 'The patient presents...' not 'Patient presents')
+- Use past tense for examination findings and interval history
+- Spell out abbreviations on first use (e.g. 'range of motion (ROM)')
+- Include ROM measurements in degrees where documented
+- List diagnoses in the Assessment as numbered items
+- Mirror Assessment numbering in the Plan (Plan item 1 corresponds to Assessment item
+  1)
+- Use formal clinical language; avoid contractions
+- Document treatment modalities performed (manipulation, adjustment, modalities) in
+  the Plan
+- For auto accident cases, reference the accident date and mechanism in the HPI
+- For workers' compensation cases, reference the injury date and mechanism in the
+  HPI
+- Document work status and activity restrictions when mentioned
+style_model_version: v0
+template_routing:
+  assume_care: chiro_initial_eval
+  default: chiro_follow_up
+  discharge: chiro_follow_up
+  follow_up: chiro_follow_up
+  initial: chiro_initial_eval
+  initial_evaluation: chiro_initial_eval

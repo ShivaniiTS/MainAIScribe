@@ -1,0 +1,14 @@
+{
+  "encounter_id": "215454",
+  "date_of_exam": "2026-02-18",
+  "date_of_accident": "2024-07-03",
+  "case_number": "WC070324",
+  "visit_type": "follow_up",
+  "location": "GLEN BURNIE",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": ""
+}

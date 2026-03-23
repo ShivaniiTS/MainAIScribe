@@ -1,0 +1,14 @@
+{
+  "encounter_id": "225772",
+  "date_of_exam": "2026-02-05",
+  "date_of_accident": "2025-11-16",
+  "case_number": "DC111625",
+  "visit_type": "initial",
+  "location": "CATONSVILLE",
+  "provider": {
+    "first_name": "PAUL",
+    "last_name": "PEACE",
+    "full_name": "PAUL PEACE"
+  },
+  "supervising_physician": ""
+}

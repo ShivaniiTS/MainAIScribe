@@ -11,13 +11,13 @@
 #   docker compose -f docker-compose.yml up -d --build
 
 services:
-  # ── Provider-facing API (port 8001 — avoids conflict with other projects on 8000) ──
+  # ── Provider-facing API (port 8080 — avoids conflict with other projects) ──
   api-provider:
     build:
       context: .
       dockerfile: deploy/Dockerfile.api
     ports:
-      - "8001:8000"
+      - "8080:8000"
     volumes:
       - ./ai-scribe-data:/app/ai-scribe-data
       - ./output:/app/output
@@ -61,7 +61,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://${PUBLIC_IP:-localhost}:8001
+      - NEXT_PUBLIC_API_URL=http://${PUBLIC_IP:-localhost}:8080
       - NEXT_PUBLIC_PIPELINE_API_URL=http://${PUBLIC_IP:-localhost}:8100
       - NEXT_PUBLIC_SERVER_ROLE=provider-facing
     depends_on:

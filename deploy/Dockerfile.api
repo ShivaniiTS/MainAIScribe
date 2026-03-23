@@ -2,9 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY pyproject.toml .
-RUN pip install --no-cache-dir ".[api]"
+# Install dependencies via requirements.txt
+# (avoids hatchling needing full source to build the wheel)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source (data dirs are mounted as volumes)
 COPY api/ api/

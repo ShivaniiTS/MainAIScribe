@@ -1,0 +1,28 @@
+# requirements-pipeline.txt — Processing pipeline server (GPU/ML included)
+# Used by: deploy/Dockerfile.pipeline
+#
+# Install locally (GPU machine with CUDA):
+#   pip install -r requirements-pipeline.txt
+
+# ── All provider-facing deps ───────────────────────────────────────────────
+-r requirements.txt
+
+# ── ML / GPU dependencies ─────────────────────────────────────────────────
+# LoRA fine-tuning
+peft>=0.18.1
+
+# HuggingFace datasets
+datasets>=4.7.0
+
+# Audio I/O
+soundfile>=0.13.1
+
+# Audio augmentation (training data prep)
+audiomentations>=0.43.1
+
+# HuggingFace Accelerate (fp16 training)
+accelerate>=1.13.0
+
+# Audio processing (must match torch version on host)
+# For CPU-only installs replace with: torchaudio (without version pin)
+torchaudio==2.10.0

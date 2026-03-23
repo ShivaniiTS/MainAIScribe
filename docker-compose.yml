@@ -32,7 +32,7 @@ services:
   api-pipeline:
     build:
       context: .
-      dockerfile: deploy/Dockerfile.api
+      dockerfile: deploy/Dockerfile.pipeline
     ports:
       - "8100:8100"
     volumes:
@@ -45,6 +45,7 @@ services:
       - AI_SCRIBE_OUTPUT_DIR=/app/pipeline-output
       - AI_SCRIBE_CONFIG_DIR=/app/config
       - PYTHONUNBUFFERED=1
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8100"]
     restart: unless-stopped
 
   # ── Provider web portal (port 3000) ─────────────────────────────────

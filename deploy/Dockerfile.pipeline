@@ -10,11 +10,21 @@ WORKDIR /app
 # Install system dependencies for GPU workloads
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    build-essential \
+    cmake \
+    git \
+    libsndfile1 \
+    libsndfile1-dev \
+    libopenblas-dev \
+    libomp-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies via requirements-pipeline.txt (includes GPU/ML deps)
 # (avoids hatchling needing full source to build the wheel)
 COPY requirements.txt requirements-pipeline.txt ./
+# Ensure pip/setuptools/wheel are recent and available for building wheels
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements-pipeline.txt
 
 # Copy source

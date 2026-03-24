@@ -241,8 +241,22 @@ def get_audio_path(sample_id: str) -> Optional[str]:
     if result is None:
         return None
     mode, _phys, data_dir = result
+    # If encounter_details.json specifies an explicit audio file, respect it
+    enc_path = data_dir / "encounter_details.json"
+    if enc_path.exists():
+        try:
+            enc = json.loads(enc_path.read_text())
+            audio_file = enc.get("audio_file")
+            if audio_file:
+                candidate = data_dir / audio_file
+                if candidate.exists():
+                    return str(candidate)
+        except Exception:
+            # ignore malformed JSON and continue to canonical name checks
+            pass
+
+    # Only accept canonical filenames — do NOT pick an arbitrary mp3.
     if mode == "conversation":
-        # Primary = conversation audio; fallback to note audio
         conv = data_dir / "conversation_audio.mp3"
         note = data_dir / "note_audio.mp3"
         if conv.exists():
@@ -253,6 +267,8 @@ def get_audio_path(sample_id: str) -> Optional[str]:
         path = data_dir / "dictation.mp3"
         if path.exists():
             return str(path)
+
+    # No canonical file found; return None so caller reports audio missing
     return None
 
 

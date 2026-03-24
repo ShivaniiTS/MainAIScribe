@@ -3,6 +3,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Bake API URLs into the bundle at build time (NEXT_PUBLIC_* are not runtime vars)
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_PIPELINE_API_URL=http://localhost:8100
+ARG NEXT_PUBLIC_SERVER_ROLE=provider-facing
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_PIPELINE_API_URL=$NEXT_PUBLIC_PIPELINE_API_URL
+ENV NEXT_PUBLIC_SERVER_ROLE=$NEXT_PUBLIC_SERVER_ROLE
 RUN npm run build
 
 FROM node:20-alpine AS runner

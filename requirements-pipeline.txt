@@ -7,6 +7,28 @@
 # ── All provider-facing deps ───────────────────────────────────────────────
 -r requirements.txt
 
+# ── ASR / transcription dependencies ─────────────────────────────────────
+# Core deep-learning framework (CPU wheels; GPU builds are installed on the host)
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# faster-whisper: optimised Whisper backend (required by WhisperX)
+faster-whisper>=1.0.0
+
+# CTranslate2: inference engine used by faster-whisper
+ctranslate2>=4.0.0
+
+# WhisperX: forced-alignment + diarisation wrapper around faster-whisper
+# Install from PyPI (>=3.1) or fallback to GitHub source below if unavailable:
+# pip install git+https://github.com/m-bain/whisperX.git
+whisperx>=3.1.0
+
+# Pyannote diarisation (used by WhisperX for speaker separation)
+pyannote.audio>=3.1.0
+
+# Silero VAD (voice activity detection)
+pysilero-vad>=0.0.1
+
 # ── ML / GPU dependencies ─────────────────────────────────────────────────
 # LoRA fine-tuning
 peft>=0.18.1
@@ -22,7 +44,3 @@ audiomentations>=0.43.1
 
 # HuggingFace Accelerate (fp16 training)
 accelerate>=1.13.0
-
-# Audio processing (must match torch version on host)
-# For CPU-only installs replace with: torchaudio (without version pin)
-torchaudio==2.10.0

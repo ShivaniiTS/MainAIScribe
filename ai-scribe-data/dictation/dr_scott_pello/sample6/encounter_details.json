@@ -1,0 +1,17 @@
+{
+  "encounter_id": "sample6",
+  "provider_id": "dr_scott_pello",
+  "patient_id": "ayesha_edwards",
+  "visit_type": "assume_care",
+  "mode": "dictation",
+  "date_of_service": "2026-02-03",
+  "date_of_exam": "2026-02-03",
+  "case_number": "0203-067",
+  "audio_file": "D 0203-067 7586 0000 01 00 @0203-0918.mp3",
+  "has_gold_standard": true,
+  "location": "Excelsia Injury Care",
+  "provider": {
+    "full_name": "Dr. Scott Pello",
+    "id": "dr_scott_pello"
+  }
+}

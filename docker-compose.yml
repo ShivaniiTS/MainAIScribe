@@ -58,12 +58,17 @@ services:
     build:
       context: ./client/web
       dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* must be baked in at build time — set PUBLIC_IP before building:
+        #   export PUBLIC_IP=$(curl -s checkip.amazonaws.com)
+        #   docker compose build web
+        - NEXT_PUBLIC_API_URL=http://${PUBLIC_IP:-localhost}:8080
+        - NEXT_PUBLIC_PIPELINE_API_URL=http://${PUBLIC_IP:-localhost}:8100
+        - NEXT_PUBLIC_SERVER_ROLE=provider-facing
     ports:
       - "3001:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://${PUBLIC_IP:-localhost}:8080
-      - NEXT_PUBLIC_PIPELINE_API_URL=http://${PUBLIC_IP:-localhost}:8100
-      - NEXT_PUBLIC_SERVER_ROLE=provider-facing
+      - NODE_ENV=production
     depends_on:
       - api-provider
     restart: unless-stopped

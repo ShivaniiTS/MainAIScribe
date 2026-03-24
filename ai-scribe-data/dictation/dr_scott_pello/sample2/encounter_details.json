@@ -1,0 +1,17 @@
+{
+  "encounter_id": "sample2",
+  "provider_id": "dr_scott_pello",
+  "patient_id": "alex_nicholson",
+  "visit_type": "initial_evaluation",
+  "mode": "dictation",
+  "date_of_service": "2026-02-02",
+  "date_of_exam": "2026-02-02",
+  "case_number": "0202-230",
+  "audio_file": "D 0202-230 7586 0000 01 00 @0202-1049.mp3",
+  "has_gold_standard": true,
+  "location": "Excelsia Injury Care",
+  "provider": {
+    "full_name": "Dr. Scott Pello",
+    "id": "dr_scott_pello"
+  }
+}

@@ -84,6 +84,10 @@ class CleanupMetrics:
     medasr_artifacts_removed: int = 0
     format_commands_resolved: int = 0
     offensive_misrecognitions_removed: int = 0
+    scratch_that_removed: int = 0
+    spelled_words_expanded: int = 0
+    phrase_corrections: int = 0
+    unit_abbreviations: int = 0
     words_before: int = 0
     words_after: int = 0
 
@@ -104,6 +108,10 @@ class CleanupMetrics:
             f"  MedASR artifacts removed:       {self.medasr_artifacts_removed}",
             f"  Format commands resolved:       {self.format_commands_resolved}",
             f"  Offensive misrecognitions removed: {self.offensive_misrecognitions_removed}",
+            f"  'Scratch that' corrections:     {self.scratch_that_removed}",
+            f"  Spelled-out words expanded:     {self.spelled_words_expanded}",
+            f"  Medical phrase corrections:     {self.phrase_corrections}",
+            f"  Unit abbreviations applied:     {self.unit_abbreviations}",
             f"  Words: {self.words_before} → {self.words_after} "
             f"({self.words_before - self.words_after} removed, "
             f"{(self.words_before - self.words_after) / max(self.words_before, 1) * 100:.1f}% reduction)",
@@ -163,6 +171,106 @@ def remove_offensive_misrecognitions(text: str, metrics: CleanupMetrics) -> str:
         return " "
 
     return _OFFENSIVE_MISRECOGNITION_RE.sub(_replace, text)
+
+
+# ============================================================
+# STAGE 0a: "SCRATCH THAT" DICTATION CORRECTION REMOVAL
+# ============================================================
+#
+# Physicians routinely say "scratch that" to void the immediately
+# preceding phrase.  If left in the transcript it produces garbled
+# sentences like "he takes naproxen scratch that ibuprofen 600mg".
+#
+# Rule: remove the clause that precedes "scratch that" on the same
+# sentence and remove the command phrase itself so the remaining
+# speech reads cleanly.
+#
+# Examples:
+#   "naproxen scratch that ibuprofen"                 → "ibuprofen"
+#   "to the left knee, scratch that, to the right knee" → "to the right knee"
+#   "severe pain. Scratch that. moderate pain."       → "moderate pain."
+
+_SCRATCH_THAT_RE = re.compile(
+    # Greedy: consume everything on the current clause (no sentence breaks)
+    # then the command phrase, then optional trailing comma/period and spaces.
+    # Matches: "scratch that", "scratch all that", "scratched that"
+    r'[^.!?\n]*\bscratche?d?\s+(?:all\s+)?that\b[,.]?\s*',
+    re.IGNORECASE,
+)
+
+
+def remove_scratch_that(text: str, metrics: CleanupMetrics) -> str:
+    """
+    Stage 0a — remove 'scratch that' dictation commands and the
+    preceding clause they are correcting.
+    """
+    count = 0
+
+    def _replace(m: re.Match) -> str:
+        nonlocal count
+        count += 1
+        log.debug(f"Stage 0a (scratch that): removing '{m.group().strip()}'")
+        # Return a single space so that when the leading space of the removed
+        # clause was consumed, the remaining text doesn't lose its sentence
+        # boundary (e.g. "traumatic. scratch that knee" → "traumatic. knee").
+        return ' '
+
+    text = _SCRATCH_THAT_RE.sub(_replace, text)
+    metrics.scratch_that_removed += count
+    if count:
+        log.info(f"Stage 0a: removed {count} 'scratch that'/'scratched that' correction(s)")
+    return text
+
+
+# ============================================================
+# STAGE 0b: SPELLED-OUT WORD EXPANSION
+# ============================================================
+#
+# Physicians occasionally spell a term letter-by-letter during
+# dictation, e.g. "H Y P E R T E N S I O N" or "C-O-P-D".
+# ASR transcribes each letter as a separate token.  This stage
+# collapses 3+ consecutive single-letter tokens into a single
+# uppercase word.
+#
+# Examples:
+#   "H Y P E R T E N S I O N"  → "HYPERTENSION"
+#   "C-O-P-D"                   → "COPD"
+#   "M-R-I"                     → "MRI"
+
+_SPELL_SEQ_RE = re.compile(
+    # One letter, followed by 2+ repetitions of (separator + one letter).
+    # (?<![A-Za-z]) ensures the first letter is not part of a longer word.
+    # (?![A-Za-z])  ensures the last matched letter is standalone.
+    #
+    # Separator MUST be at least one whitespace OR a hyphen/en-dash,
+    # so consecutive letters in normal words (e.g. "diagnosis") never match.
+    r'(?<![A-Za-z])[A-Za-z](?:(?:[ \t]+|[ \t]*[-\u2013][ \t]*)[A-Za-z]){2,}(?![A-Za-z])',
+)
+
+
+def expand_spelled_words(text: str, metrics: CleanupMetrics) -> str:
+    """
+    Stage 0b — collapse letter-by-letter spellings into a single
+    uppercase word token.
+    """
+    count = 0
+
+    def _replace(m: re.Match) -> str:
+        nonlocal count
+        full = m.group(0)
+        letters = re.findall(r'[A-Za-z]', full)
+        if len(letters) < 3:
+            return full
+        word = ''.join(letters).upper()
+        count += 1
+        log.debug(f"Stage 0b (spell expand): '{full.strip()}' → '{word}'")
+        return word
+
+    text = _SPELL_SEQ_RE.sub(_replace, text)
+    metrics.spelled_words_expanded += count
+    if count:
+        log.info(f"Stage 0b: expanded {count} spelled-out word(s)")
+    return text
 
 
 # ============================================================
@@ -421,9 +529,30 @@ def fix_char_stutters(text: str, metrics: CleanupMetrics) -> str:
         return word
 
     # Process word by word, with multiple passes
+    # Build a combined skip set: standard real-word list + common English words
+    # that end in repeated letter patterns ("three", "needed") which the
+    # stutter patterns would otherwise incorrectly modify.
+    _STUTTER_SKIP = REAL_SHORT_WORDS | {
+        # Common English words that end in doubled letters (Pattern C would mangle them)
+        'three', 'free', 'tree', 'agree', 'flee', 'see', 'fee', 'bee',
+        'knee', 'flee', 'pee', 'tee', 'glee', 'spree',
+        # Common English words where Pattern B finds a false repeated chunk
+        'needed', 'seeded', 'heeded', 'weeded', 'deeded', 'reeded',
+        'headed', 'beaded', 'leaded', 'loaded', 'rugged', 'ragged',
+        'added', 'aided', 'ended', 'faded', 'fended', 'funded',
+        'sided', 'tided', 'bonded', 'landed', 'banded', 'handed',
+        'mended', 'rended', 'tended', 'vended', 'wended',
+        # Frequency / dosing words (critical for clinical notes)
+        'daily', 'weekly', 'monthly', 'yearly',
+    }
     words = text.split()
     result = []
     for w in words:
+        # Strip punctuation to get the bare word for the skip check
+        bare = re.sub(r'^[^a-zA-Z]*|[^a-zA-Z]*$', '', w).lower()
+        if bare in _STUTTER_SKIP:
+            result.append(w)
+            continue
         prev = w
         # Run up to 3 passes per word to collapse nested stutters
         for _ in range(3):
@@ -674,6 +803,262 @@ def remove_trailing_artifacts(text: str, metrics: CleanupMetrics) -> str:
     # Trailing isolated punctuation
     text = re.sub(r'\s+[.\-,]+\s*$', '', text)
 
+    return text
+
+
+# ============================================================
+# STAGE 9a: MEDICAL PHRASE CORRECTIONS
+# ============================================================
+#
+# Some phrases are so systematically misrecognised by ASR that a
+# dedicated lookup table beats any generic correction approach.
+# Each entry is (regex_pattern, canonical_replacement).
+#
+# Key example — "normocephalic and atraumatic":
+#   ASR commonly renders the fast-dictated phrase as:
+#     "normal scalp can be traumatic"
+#     "normal, scalp can be traumatic"
+#     "normal scalp and traumatic"
+#     "normocephalic atraumatic"  (missing "and")
+
+_MEDICAL_PHRASE_CORRECTIONS: list[tuple[re.Pattern, str]] = [
+    # ── normocephalic and atraumatic ────────────────────────────────────────
+    # Catches: "normal scalp can be traumatic", "normo static and traumatic",
+    # "normal cephalic", "normo cephallic", bare "normocephalic atraumatic" etc.
+    (
+        re.compile(
+            r'\b(?:'
+            r'normal\s*,?\s*scalp\s+(?:can\s+)?(?:be\s+)?(?:and\s+)?a?traumatic'
+            r'|normo\s*static\s+and\s+a?traumatic'
+            r'|normo\s*cephallic\s+and\s+a?traumatic'
+            r'|normal\s*cephalic\s+and\s+a?traumatic'
+            r'|normocephalic\s+atraumatic'
+            r'|normo\s*cephalic\s+and\s+a?traumatic'
+            r'|normal\s+scalp\s+can\s+be\s+traumatic'
+            r'|normal\s+scalp\s+and\s+traumatic'
+            r'|normo\s*cephalic\s+a?traumatic'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'normocephalic and atraumatic',
+    ),
+    # ── cyanosis, clubbing, or edema ────────────────────────────────────────
+    (
+        re.compile(
+            r'\b(?:'
+            r'no\s+cyanosis\s+club\w*\s+or\s+edema'
+            r'|cyanosis\s+club\w*\s+or\s+edema'
+            r'|cyan\s+clubbing\s+(?:or\s+)?edema'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'no cyanosis, clubbing, or edema',
+    ),
+    # ── extremities negative for cyanosis, clubbing, or edema ──────────────
+    # ASR garbles: "sinus. This could be more edema", "sinus or edema", etc.
+    # Also fixes contexts where sentence structure shifts mid-phrase.
+    (
+        re.compile(
+            r'\bextremities\s+are\s+negative\s+for\s+(?:'
+            r'sinus[,.]?\s+(?:this\s+)?could\s+be\s+(?:more\s+)?edema'
+            r'|sinus\s+or\s+(?:could\s+be\s+)?(?:more\s+)?edema'
+            r'|sinus[,.]?\s+(?:and\s+)?(?:more\s+)?edema'
+            r'|sinus\s+clubbing\s+(?:or\s+)?edema'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'Extremities are negative for cyanosis, clubbing, or edema',
+    ),
+    # ── cyanosis, clubbing, or edema (standalone, no "extremities" prefix) ──
+    # Catches mid-sentence garbles like "negative for sinus. could be edema"
+    (
+        re.compile(
+            r'\bnegative\s+for\s+(?:'
+            r'sinus[,.]?\s+(?:this\s+)?could\s+be\s+(?:more\s+)?edema'
+            r'|sinus\s+or\s+(?:could\s+be\s+)?(?:more\s+)?edema'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'negative for cyanosis, clubbing, or edema',
+    ),
+    # ── regular rate and rhythm ──────────────────────────────────────────────
+    (
+        re.compile(
+            r'\b(?:'
+            r'regular\s+rate\s+in\s+rhythm'
+            r'|regular\s+rate\s+an\s+rhythm'
+            r'|regular\s+raid\s+and\s+rhythm'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'regular rate and rhythm',
+    ),
+    # ── clear to auscultation bilaterally ───────────────────────────────────
+    (
+        re.compile(
+            r'\b(?:'
+            r'clear\s+to\s+osculation\s+bilaterally'
+            r'|clear\s+to\s+auscultation\s+bilateral(?:ly)?'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'clear to auscultation bilaterally',
+    ),
+    # ── within normal limits ─────────────────────────────────────────────────
+    (
+        re.compile(
+            r'\b(?:'
+            r'with\s+in\s+normal\s+limits'
+            r'|within\s+normal\s+limit'
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'within normal limits',
+    ),
+    # ── history of present illness ───────────────────────────────────────────
+    # ASR mishears "present" as "pregnancy", "presidents", "presence" etc.
+    (
+        re.compile(
+            r'\bhistory\s+of\s+(?:'
+            r'pregnancy\s+illness'
+            r'|presidents?\s+illness'
+            r'|presence\s+illness'
+            r'|present\s+illness'   # already correct — ensure canonical casing
+            r')\b',
+            re.IGNORECASE,
+        ),
+        'history of present illness',
+    ),
+    # ── holocranial ──────────────────────────────────────────────────────────
+    # ASR mishears "holocranial" (whole-head headache) as "whole cranial"
+    (
+        re.compile(r'\bwhole\s+cranial\b', re.IGNORECASE),
+        'holocranial',
+    ),
+    # ── followup evaluation ──────────────────────────────────────────────────
+    # ASR mishears "evaluation" as "evacuation"
+    (
+        re.compile(r'\bfollow(?:\s*-?\s*up)?\s+evacuation\b', re.IGNORECASE),
+        'followup evaluation',
+    ),
+    # ── Medication name corrections ──────────────────────────────────────────
+    # Qulipta (atogepant — migraine preventive)
+    (
+        re.compile(
+            r'\b(?:Q[-\s]?Lifta|Q[-\s]?lipta|Klifta|Q[-\s]?lifter)\b',
+            re.IGNORECASE,
+        ),
+        'Qulipta',
+    ),
+    # Skelaxin (metaxalone — muscle relaxant)
+    (
+        re.compile(
+            r'\b(?:galxo|galxon|skelaxen|skelaxon|scalaxi[nm])\b',
+            re.IGNORECASE,
+        ),
+        'Skelaxin',
+    ),
+    # Nurtec (rimegepant — migraine treatment)
+    (
+        re.compile(
+            r'\b(?:NERTEC|nertec|ner\s*tech|nur\s*tec|Nurtech|nortec|norteck)\b',
+            re.IGNORECASE,
+        ),
+        'Nurtec',
+    ),
+]
+
+
+def fix_medical_phrases(text: str, metrics: CleanupMetrics) -> str:
+    """
+    Stage 9a — apply lookup-table corrections for phrases that ASR
+    consistently misrecognises.  Only well-known garbled forms map to
+    their canonical clinical phrase.
+    """
+    count = 0
+    for pattern, canonical in _MEDICAL_PHRASE_CORRECTIONS:
+        new_text, n = pattern.subn(canonical, text)
+        if n:
+            count += n
+            log.debug(
+                f"Stage 9a (phrase fix): {n}x '...{pattern.pattern[:40]}...' "
+                f"→ '{canonical}'"
+            )
+            text = new_text
+    metrics.phrase_corrections += count
+    if count:
+        log.info(f"Stage 9a: {count} medical phrase correction(s) applied")
+    return text
+
+
+# ============================================================
+# STAGE 9b: UNIT & ABBREVIATION NORMALISATION
+# ============================================================
+#
+# Convert spelled-out measurement units and common dosing terms to
+# their standard abbreviated forms.
+#
+# Standard medical abbreviation casing:
+#   mg  mcg  g  mL  mEq  — lowercase metric units (SI convention)
+#   PO  QHS  QD  BID  TID  QID  PRN  — uppercase Latin/dosing abbreviations
+
+_UNIT_REPLACEMENTS: list[tuple] = [
+    # weight / mass — longest form first to avoid partial matches
+    (re.compile(r'\bmicrograms?\b', re.IGNORECASE), 'mcg'),
+    (re.compile(r'\bmilligrams?\b',  re.IGNORECASE), 'mg'),
+    (re.compile(r'\bkilograms?\b',   re.IGNORECASE), 'kg'),
+    # "gram(s)" — negative lookbehind prevents matching inside "program", "diagram" etc.
+    (re.compile(r'(?<![a-z])grams?\b', re.IGNORECASE), 'g'),
+    # volume
+    (re.compile(r'\bmilli\s*liters?\b', re.IGNORECASE), 'mL'),
+    (re.compile(r'\bmilliliters?\b',    re.IGNORECASE), 'mL'),
+    (re.compile(r'\bliters?\b',          re.IGNORECASE), 'L'),
+    # equivalents
+    (re.compile(r'\bmilliequivalents?\b', re.IGNORECASE), 'mEq'),
+    # route of administration
+    (re.compile(r'\bby\s+mouth\b',  re.IGNORECASE), 'PO'),
+    (re.compile(r'\bper\s+os\b',    re.IGNORECASE), 'PO'),
+    # dosing frequency
+    (re.compile(r'\b(?:every\s+)?(?:at\s+)?bedtime\b', re.IGNORECASE), 'QHS'),
+    (re.compile(r'\bonce\s+(?:a\s+)?daily\b',           re.IGNORECASE), 'QD'),
+    (re.compile(r'\bonce\s+a\s+day\b',                  re.IGNORECASE), 'QD'),
+    (re.compile(r'\btwice\s+(?:a\s+)?daily\b',          re.IGNORECASE), 'BID'),
+    (re.compile(r'\btwice\s+a\s+day\b',                 re.IGNORECASE), 'BID'),
+    (re.compile(r'\bthree\s+times\s+(?:a\s+)?(?:daily|day)\b', re.IGNORECASE), 'TID'),
+    (re.compile(r'\bfour\s+times\s+(?:a\s+)?(?:daily|day)\b',  re.IGNORECASE), 'QID'),
+    (re.compile(r'\bas\s+needed\b',   re.IGNORECASE), 'PRN'),
+    (re.compile(r'\bas\s+required\b', re.IGNORECASE), 'PRN'),
+    # "every N hours" → "q Nh"
+    (re.compile(r'\bevery\s+(\d+)\s+hours?\b', re.IGNORECASE),
+     lambda m: f'q {m.group(1)}h'),
+    # parenteral routes
+    (re.compile(r'\bsubcutaneously\b', re.IGNORECASE), 'SQ'),
+    (re.compile(r'\bintravenously\b',  re.IGNORECASE), 'IV'),
+    (re.compile(r'\bintramuscularly\b', re.IGNORECASE), 'IM'),
+]
+
+
+def normalize_unit_abbreviations(text: str, metrics: CleanupMetrics) -> str:
+    """
+    Stage 9b — replace spelled-out units and dosing terms with their
+    standard medical abbreviations.
+    """
+    count = 0
+    for pattern, replacement in _UNIT_REPLACEMENTS:
+        if callable(replacement):
+            new_text, n = pattern.subn(replacement, text)
+        else:
+            new_text, n = pattern.subn(replacement, text)
+        if n:
+            count += n
+            log.debug(
+                f"Stage 9b (units): {n}x → "
+                f"'{replacement if not callable(replacement) else '<fn>'}'"
+            )
+            text = new_text
+    metrics.unit_abbreviations += count
+    if count:
+        log.info(f"Stage 9b: {count} unit/abbreviation normalisation(s) applied")
     return text
 
 
@@ -1478,6 +1863,12 @@ def postprocess(text: str, verbose: bool = False,
             f"offensive ASR misrecognition(s) from transcript"
         )
 
+    # Stage 0a: 'Scratch that' dictation correction removal
+    text = remove_scratch_that(text, metrics)
+
+    # Stage 0b: Expand letter-by-letter spelled-out words
+    text = expand_spelled_words(text, metrics)
+
     # Stage 1: Format command doubles
     text = fix_format_command_doubles(text, metrics)
     log.debug(f"After stage 1 (format cmds): {metrics.format_cmd_doubles} fixes")
@@ -1511,6 +1902,14 @@ def postprocess(text: str, verbose: bool = False,
 
     # Stage 9: Trailing artifacts
     text = remove_trailing_artifacts(text, metrics)
+
+    # Stage 9a: Medical phrase corrections (systematic ASR misrecognitions)
+    text = fix_medical_phrases(text, metrics)
+    log.debug(f"After stage 9a (phrase fix): {metrics.phrase_corrections} corrections")
+
+    # Stage 9b: Unit and abbreviation normalisation (mg, g, mcg, PO, BID …)
+    text = normalize_unit_abbreviations(text, metrics)
+    log.debug(f"After stage 9b (units): {metrics.unit_abbreviations} substitutions")
 
     # Stage 10: Dictionary matching (correct remaining misspellings)
     if use_dictionary:

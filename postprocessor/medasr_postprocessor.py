@@ -842,6 +842,16 @@ _MEDICAL_PHRASE_CORRECTIONS: list[tuple[re.Pattern, str]] = [
         ),
         'normocephalic and atraumatic',
     ),
+    # ── "head is normal, spout, can be traumatic" (ASR garble) ────────────────
+    # ASR decodes "Head is normocephalic and atraumatic" as this phrase.
+    # "spout" = garbled "cephalic"; "can be traumatic" = garbled "and atraumatic".
+    (
+        re.compile(
+            r'\bhead\s+is\s+normal\s*,?\s*spout\s*,?\s*can\s+be\s+traumatic\b',
+            re.IGNORECASE,
+        ),
+        'Head is normocephalic and atraumatic',
+    ),
     # ── cyanosis, clubbing, or edema ────────────────────────────────────────
     (
         re.compile(
@@ -965,6 +975,14 @@ _MEDICAL_PHRASE_CORRECTIONS: list[tuple[re.Pattern, str]] = [
             re.IGNORECASE,
         ),
         'Nurtec',
+    ),
+    # Ubrelvy (ubrogepant — migraine treatment)
+    (
+        re.compile(
+            r'\b(?:urelvi|urelvy|ubrelvi|ubrelvy)\b',
+            re.IGNORECASE,
+        ),
+        'Ubrelvy',
     ),
 ]
 

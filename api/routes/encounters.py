@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import uuid
 from datetime import date, datetime
 from pathlib import Path
@@ -70,12 +71,40 @@ def get_encounter(sample_id: str):
 
 
 @router.get("/{sample_id}/note", response_model=NoteContent)
-def get_note(
+async def get_note(
     sample_id: str,
     version: str = Query(dl.LATEST_VERSION, description="Pipeline version"),
 ):
-    """Get the generated clinical note (Markdown)."""
+    """Get the generated clinical note (Markdown).
+
+    Falls back to fetching from the pipeline server when the note isn't
+    available locally (e.g. proxy fetch failed during processing).
+    """
     content = dl.get_generated_note(sample_id, version)
+
+    # Proxy fallback: if local note missing and we're provider-facing, try pipeline
+    if content is None and needs_proxy():
+        try:
+            from api.proxy import proxy_get_note
+            remote = await proxy_get_note(sample_id, version)
+            content = remote.get("content")
+            # Cache locally so subsequent requests don't need the proxy
+            if content:
+                out_dir = dl._output_dir_for(sample_id)
+                if out_dir is None:
+                    # Create the output dir based on encounter metadata
+                    for enc in _encounters.values():
+                        if enc.get("sample_id") == sample_id and enc.get("output_dir"):
+                            out_dir = Path(enc["output_dir"])
+                            out_dir.mkdir(parents=True, exist_ok=True)
+                            break
+                if out_dir:
+                    resolved = dl.resolve_version(version)
+                    (out_dir / f"generated_note_{resolved}.md").write_text(content)
+                    logger.info("proxy_note_cached", sample_id=sample_id, version=version)
+        except Exception as e:
+            logger.warning("proxy_note_fallback_failed", sample_id=sample_id, error=str(e))
+
     if content is None:
         raise HTTPException(
             status_code=404,
@@ -123,12 +152,37 @@ def get_gold_note(sample_id: str):
 
 
 @router.get("/{sample_id}/transcript")
-def get_transcript(
+async def get_transcript(
     sample_id: str,
     version: str = Query(dl.LATEST_VERSION),
 ):
-    """Get the standalone transcript text for a sample."""
+    """Get the standalone transcript text for a sample.
+
+    Falls back to fetching from the pipeline server when not available locally.
+    """
     content = dl.get_transcript(sample_id, version)
+
+    # Proxy fallback
+    if content is None and needs_proxy():
+        try:
+            from api.proxy import proxy_get_transcript
+            remote = await proxy_get_transcript(sample_id, version)
+            content = remote.get("content")
+            if content:
+                out_dir = dl._output_dir_for(sample_id)
+                if out_dir is None:
+                    for enc in _encounters.values():
+                        if enc.get("sample_id") == sample_id and enc.get("output_dir"):
+                            out_dir = Path(enc["output_dir"])
+                            out_dir.mkdir(parents=True, exist_ok=True)
+                            break
+                if out_dir:
+                    resolved = dl.resolve_version(version)
+                    (out_dir / f"audio_transcript_{resolved}.txt").write_text(content)
+                    logger.info("proxy_transcript_cached", sample_id=sample_id, version=version)
+        except Exception as e:
+            logger.warning("proxy_transcript_fallback_failed", sample_id=sample_id, error=str(e))
+
     if content is None:
         raise HTTPException(
             status_code=404,
@@ -144,9 +198,21 @@ def get_transcript(
 
 
 @router.get("/{sample_id}/audio")
-def get_audio(sample_id: str):
-    """Stream the raw audio file for a sample."""
+def get_audio(sample_id: str, type: Optional[str] = Query(None, description="Audio type: 'notes' for note dictation, omit for primary")):
+    """Stream the raw audio file for a sample.
+
+    Pass ``?type=notes`` to retrieve the note dictation audio (conversation mode).
+    Omit or pass any other value for the primary audio.
+    """
     from fastapi.responses import FileResponse
+
+    if type == "notes":
+        paths = dl.get_audio_paths(sample_id)
+        note_path = paths.get("note_dictation")
+        if note_path is None:
+            raise HTTPException(status_code=404, detail=f"Notes audio not found for '{sample_id}'")
+        return FileResponse(note_path, media_type="audio/mpeg", filename=f"{sample_id}_note_audio.mp3")
+
     audio_path = dl.get_audio_path(sample_id)
     if audio_path is None:
         raise HTTPException(status_code=404, detail=f"Audio not found for '{sample_id}'")
@@ -192,12 +258,13 @@ def _load_patient_from_roster(patient_id: str) -> dict | None:
 @router.post("", response_model=EncounterResponse, status_code=201)
 def create_encounter(req: EncounterCreateRequest):
     """Create a new encounter (returns encounter_id for polling)."""
-    encounter_id = str(uuid.uuid4())[:8]
+    encounter_id = req.encounter_id or str(uuid.uuid4())[:8]
     enc = {
         "encounter_id": encounter_id,
         "status": "pending",
         "provider_id": req.provider_id,
         "patient_id": req.patient_id,
+        "patient_name": req.patient_name,
         "visit_type": req.visit_type,
         "mode": req.mode,
         "message": "Waiting for audio upload",
@@ -210,6 +277,7 @@ def create_encounter(req: EncounterCreateRequest):
 async def upload_audio(
     encounter_id: str,
     audio: UploadFile = File(...),
+    note_audio: Optional[UploadFile] = File(None),
 ):
     """
     Upload audio and trigger the encounter pipeline.
@@ -228,11 +296,23 @@ async def upload_audio(
     mode = enc["mode"]
     today = date.today().isoformat()
 
-    # Look up patient from roster
-    patient = _load_patient_from_roster(patient_id)
+    # Look up patient name: prefer name from create request, fall back to roster
     patient_name = "unknown"
-    if patient:
-        patient_name = f"{patient['first_name']}_{patient['last_name']}".lower()
+    patient = None
+    if enc.get("patient_name"):
+        # Name provided by MDCO bridge (e.g. "BHALALA, NIRAV")
+        raw = enc["patient_name"]
+        if "," in raw:
+            parts = [p.strip() for p in raw.split(",", 1)]
+            patient_name = f"{parts[1]}_{parts[0]}".lower()
+        else:
+            patient_name = raw.replace(" ", "_").lower()
+        # Sanitize for filesystem
+        patient_name = re.sub(r"[^a-z0-9_]+", "_", patient_name).strip("_")
+    else:
+        patient = _load_patient_from_roster(patient_id)
+        if patient:
+            patient_name = f"{patient['first_name']}_{patient['last_name']}".lower()
 
     # Build folder name: {patient_name}_{encounter_id}_{date}
     folder_name = f"{patient_name}_{encounter_id}_{today}"
@@ -252,10 +332,43 @@ async def upload_audio(
     content = await audio.read()
     audio_path.write_bytes(content)
 
+    # Save note dictation audio (conversation mode dual-audio)
+    note_audio_bytes: bytes | None = None
+    note_audio_filename: str | None = None
+    note_audio_path_str: str | None = None
+    if note_audio and note_audio.filename:
+        note_audio_filename = "note_audio.mp3"
+        note_audio_save_path = encounter_dir / note_audio_filename
+        note_audio_bytes = await note_audio.read()
+        note_audio_save_path.write_bytes(note_audio_bytes)
+        note_audio_path_str = str(note_audio_save_path)
+
     # Generate patient_context.yaml (same format as batch data)
+    # Derive patient display name from provided name or roster
+    if enc.get("patient_name"):
+        raw = enc["patient_name"]
+        if "," in raw:
+            parts = [p.strip() for p in raw.split(",", 1)]
+            display_name = f"{parts[1]} {parts[0]}"  # "Firstname Lastname"
+            first_name = parts[1] if len(parts) > 1 else ""
+            last_name = parts[0]
+        else:
+            display_name = raw
+            name_parts = raw.strip().split()
+            first_name = name_parts[0] if name_parts else ""
+            last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+    elif patient:
+        display_name = f"{patient['first_name']} {patient['last_name']}"
+        first_name = patient["first_name"]
+        last_name = patient["last_name"]
+    else:
+        display_name = "Unknown"
+        first_name = "Unknown"
+        last_name = "Unknown"
+
     patient_context = {
         "patient": {
-            "name": f"{patient['first_name']} {patient['last_name']}" if patient else "Unknown",
+            "name": display_name,
             "date_of_birth": patient.get("date_of_birth", "") if patient else "",
             "sex": patient.get("sex", "") if patient else "",
             "mrn": patient.get("mrn", "") if patient else "",
@@ -292,8 +405,8 @@ async def upload_audio(
     # Generate patient_demographics.json
     demographics = {
         "patient_id": patient_id,
-        "first_name": patient["first_name"] if patient else "Unknown",
-        "last_name": patient["last_name"] if patient else "Unknown",
+        "first_name": first_name,
+        "last_name": last_name,
         "date_of_birth": patient.get("date_of_birth", "") if patient else "",
         "sex": patient.get("sex", "") if patient else "",
         "mrn": patient.get("mrn", "") if patient else "",
@@ -312,6 +425,7 @@ async def upload_audio(
         "date_of_service": today,
         "created_at": datetime.utcnow().isoformat(),
         "audio_file": audio_filename,
+        "note_audio_file": note_audio_filename,
         "has_gold_standard": False,
     }
     (encounter_dir / "encounter_details.json").write_text(
@@ -334,6 +448,8 @@ async def upload_audio(
                 sample_id=folder_name,
                 audio_bytes=content,
                 audio_filename=audio_filename,
+                note_audio_bytes=note_audio_bytes,
+                note_audio_filename=note_audio_filename,
                 mode=mode,
                 provider_id=provider_id,
                 visit_type=visit_type,
@@ -348,6 +464,7 @@ async def upload_audio(
                 encounter_id=encounter_id,
                 sample_id=folder_name,
                 audio_path=str(audio_path),
+                note_audio_path=note_audio_path_str,
                 mode=mode,
                 provider_id=provider_id,
                 visit_type=visit_type,
@@ -369,6 +486,8 @@ async def _proxy_pipeline_run(
     sample_id: str,
     audio_bytes: bytes,
     audio_filename: str,
+    note_audio_bytes: bytes | None,
+    note_audio_filename: str | None,
     mode: str,
     provider_id: str,
     visit_type: str,
@@ -395,6 +514,8 @@ async def _proxy_pipeline_run(
         upload_result = await proxy_upload(
             audio_bytes=audio_bytes,
             audio_filename=audio_filename,
+            note_audio_bytes=note_audio_bytes,
+            note_audio_filename=note_audio_filename,
             sample_id=sample_id,
             mode=mode,
             provider_id=provider_id,
@@ -417,9 +538,28 @@ async def _proxy_pipeline_run(
 
         # 3. Poll until complete (max ~10 minutes)
         max_polls = 120
+        consecutive_errors = 0
         for i in range(max_polls):
             await asyncio.sleep(5)
-            status = await proxy_status(job_id)
+            try:
+                status = await proxy_status(job_id)
+                consecutive_errors = 0  # reset on success
+            except Exception as poll_exc:
+                consecutive_errors += 1
+                logger.warning(
+                    "proxy_poll_error",
+                    encounter_id=encounter_id,
+                    job_id=job_id,
+                    attempt=i,
+                    consecutive_errors=consecutive_errors,
+                    error=f"{type(poll_exc).__name__}: {poll_exc}",
+                )
+                if consecutive_errors >= 5:
+                    raise RuntimeError(
+                        f"Pipeline status polling failed {consecutive_errors} times in a row: {poll_exc}"
+                    )
+                continue
+
             remote_status = status.get("status", "")
             pct = status.get("pct", 0)
             stage = status.get("stage", "")
@@ -468,16 +608,18 @@ async def _proxy_pipeline_run(
         logger.info("proxy_pipeline_complete", encounter_id=encounter_id, sample_id=sample_id)
 
     except Exception as e:
-        logger.error("proxy_pipeline_error", encounter_id=encounter_id, error=str(e))
+        error_msg = f"{type(e).__name__}: {e}" if str(e) else f"{type(e).__name__} (no message)"
+        logger.error("proxy_pipeline_error", encounter_id=encounter_id, error=error_msg, exc_info=True)
         enc["status"] = "error"
-        enc["message"] = f"Pipeline error: {str(e)}"
-        await manager.send_error(encounter_id, str(e))
+        enc["message"] = f"Pipeline error: {error_msg}"
+        await manager.send_error(encounter_id, error_msg)
 
 
 async def _run_pipeline_async(
     encounter_id: str,
     sample_id: str,
     audio_path: str,
+    note_audio_path: str | None,
     mode: str,
     provider_id: str,
     visit_type: str,
@@ -518,6 +660,7 @@ async def _run_pipeline_async(
             recording_mode=recording_mode,
             delivery_method=DeliveryMethod.CLIPBOARD,
             audio_file_path=audio_path,
+            note_audio_file_path=note_audio_path,
         )
 
         await manager.send_progress(encounter_id, "transcribe", 20, "Starting ASR transcription...")
@@ -631,7 +774,7 @@ async def rerun_pipeline(sample_id: str):
 
     # Find audio file
     audio_path = None
-    for candidate in ["dictation.mp3", "conversation_audio.mp3", "notes.mp3", "conversation.mp3"]:
+    for candidate in ["dictation.mp3", "conversation_audio.mp3", "note_audio.mp3", "conversation.mp3"]:
         p = data_dir / candidate
         if p.exists():
             audio_path = str(p)
@@ -686,12 +829,25 @@ async def rerun_pipeline(sample_id: str):
         if details_path.exists():
             encounter_details = json.loads(details_path.read_text())
 
+        # Check for note audio to forward
+        rerun_note_audio_bytes: bytes | None = None
+        rerun_note_audio_filename: str | None = None
+        if data_mode == "conversation":
+            for candidate in ["note_audio.mp3"]:
+                p = data_dir / candidate
+                if p.exists():
+                    rerun_note_audio_bytes = p.read_bytes()
+                    rerun_note_audio_filename = candidate
+                    break
+
         asyncio.create_task(
             _proxy_pipeline_run(
                 encounter_id=encounter_id,
                 sample_id=sample_id,
                 audio_bytes=audio_bytes,
                 audio_filename=audio_filename,
+                note_audio_bytes=rerun_note_audio_bytes,
+                note_audio_filename=rerun_note_audio_filename,
                 mode=mode,
                 provider_id=physician,
                 visit_type=encounter_details.get("visit_type", "follow_up"),
@@ -703,7 +859,7 @@ async def rerun_pipeline(sample_id: str):
         # Local mode: run pipeline directly
         note_audio_path = None
         if data_mode == "conversation":
-            for candidate in ["notes.mp3", "note_audio.mp3"]:
+            for candidate in ["note_audio.mp3"]:
                 p = data_dir / candidate
                 if p.exists():
                     note_audio_path = str(p)

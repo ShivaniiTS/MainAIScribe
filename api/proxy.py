@@ -52,6 +52,8 @@ def needs_proxy() -> bool:
 async def proxy_upload(
     audio_bytes: bytes,
     audio_filename: str,
+    note_audio_bytes: bytes | None,
+    note_audio_filename: str | None,
     sample_id: str,
     mode: str,
     provider_id: str,
@@ -59,9 +61,16 @@ async def proxy_upload(
 ) -> dict:
     """Upload encounter files to the pipeline server."""
     client = _get_client()
+    target_url = f"{client._base_url}/pipeline/upload"
+    logger.info("proxy_upload_start", target=target_url, sample_id=sample_id, provider_id=provider_id, audio_size=len(audio_bytes))
+    files: dict[str, tuple] = {
+        "audio": (audio_filename, audio_bytes, "audio/mpeg"),
+    }
+    if note_audio_bytes and note_audio_filename:
+        files["note_audio"] = (note_audio_filename, note_audio_bytes, "audio/mpeg")
     resp = await client.post(
         "/pipeline/upload",
-        files={"audio": (audio_filename, audio_bytes, "audio/mpeg")},
+        files=files,
         data={
             "sample_id": sample_id,
             "mode": mode,
@@ -69,7 +78,9 @@ async def proxy_upload(
             "encounter_details": json.dumps(encounter_details),
         },
     )
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        body = resp.text
+        raise RuntimeError(f"Pipeline upload failed ({resp.status_code}): {body}")
     return resp.json()
 
 
@@ -89,11 +100,32 @@ async def proxy_trigger(job_id: str, mode: str, provider_id: str, visit_type: st
 
 
 async def proxy_status(job_id: str) -> dict:
-    """Poll pipeline status from the pipeline server."""
+    """Poll pipeline status from the pipeline server.
+
+    Retries up to 3 times on transient connection errors (the pipeline
+    server may drop idle connections between polls).
+    """
+    import asyncio as _asyncio
+
     client = _get_client()
-    resp = await client.get(f"/pipeline/status/{job_id}")
-    resp.raise_for_status()
-    return resp.json()
+    last_exc: Exception | None = None
+
+    for attempt in range(3):
+        try:
+            resp = await client.get(f"/pipeline/status/{job_id}")
+            resp.raise_for_status()
+            return resp.json()
+        except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadError) as exc:
+            last_exc = exc
+            logger.warning(
+                "proxy_status_retry",
+                job_id=job_id,
+                attempt=attempt + 1,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            await _asyncio.sleep(2)
+
+    raise last_exc or RuntimeError(f"proxy_status failed for {job_id}")
 
 
 async def proxy_get_note(sample_id: str, version: str = "latest") -> dict:

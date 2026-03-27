@@ -1,0 +1,65 @@
+# Neurology specialty vocabulary
+cranial nerve
+meninges
+dura mater
+arachnoid
+pia mater
+cerebrum
+cerebellum
+brainstem
+cortex
+subcortex
+thalamus
+hypothalamus
+basal ganglia
+cerebrovascular
+stroke
+TIA
+ischemic
+hemorrhagic
+aneurysm
+AVM
+seizure
+epilepsy
+EEG
+EMG
+nerve conduction
+neuropathy
+polyneuropathy
+mononeuropathy
+radiculopathy
+myelopathy
+demyelination
+multiple sclerosis
+Parkinson
+tremor
+dystonia
+ataxia
+dysmetria
+nystagmus
+diplopia
+aphasia
+dysarthria
+dysphagia
+hemiplegia
+hemiparesis
+paraplegia
+quadriplegia
+reflexes
+hyperreflexia
+hyporeflexia
+Babinski
+Romberg
+proprioception
+vibration sense
+dermatome
+myotome
+MRI brain
+MRI spine
+CT head
+lumbar puncture
+CSF
+neuralgia
+migraine
+tension headache
+cluster headache

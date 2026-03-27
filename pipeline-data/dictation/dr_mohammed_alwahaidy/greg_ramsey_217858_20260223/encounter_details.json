@@ -1,0 +1,17 @@
+{
+  "encounter_id": "217858",
+  "date_of_exam": "2026-02-23",
+  "date_of_accident": "2025-05-18",
+  "case_number": "DC051825",
+  "visit_type": "initial",
+  "location": "N. HOWARD STREET",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": "",
+  "mode": "dictation",
+  "provider_id": "dr_mohammed_alwahaidy",
+  "audio_file": "dictation.mp3"
+}

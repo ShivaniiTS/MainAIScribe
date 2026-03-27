@@ -1,0 +1,85 @@
+# config/quality_baseline.yaml
+#
+# Best-known quality parameters for the AI Scribe pipeline.
+# Generated after Session 6 (Quality Evaluation & Optimization).
+#
+# Pipeline version: v2 (templates + specialty + refusal retry)
+# Evaluation: LLM-as-judge on 22 samples with gold standards
+# Date: 2026-03-09
+
+version: v2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Quality thresholds (regression test asserts scores >= these values)
+# ─────────────────────────────────────────────────────────────────────────────
+thresholds:
+  overall_avg: 4.30          # Average overall score across all samples
+  min_sample_score: 4.00     # No individual sample should fall below this
+  medical_accuracy_avg: 4.00
+  completeness_avg: 4.30
+  no_hallucination_avg: 4.65
+  structure_compliance_avg: 4.80
+  clinical_language_avg: 4.00
+  readability_avg: 4.00
+  keyword_overlap_avg: 0.28  # 28% keyword overlap (weak signal, informational only)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dimension weights (used in overall score calculation)
+# ─────────────────────────────────────────────────────────────────────────────
+dimension_weights:
+  medical_accuracy: 0.30
+  completeness: 0.25
+  no_hallucination: 0.20
+  structure_compliance: 0.10
+  clinical_language: 0.10
+  readability: 0.05
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ASR parameters (WhisperX)
+# ─────────────────────────────────────────────────────────────────────────────
+asr:
+  model: large-v3
+  device: cuda
+  compute_type: float16
+  batch_size: 16
+  avg_confidence_dictation: 0.51   # observed on dictation samples
+  avg_confidence_ambient: 0.63     # observed on ambient samples
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LLM parameters (Ollama)
+# ─────────────────────────────────────────────────────────────────────────────
+llm:
+  model: llama3.1:latest           # tested model; qwen2.5:32b preferred when available
+  temperature: 0.1
+  top_p: 0.9
+  max_tokens: 2048
+  avg_latency_ms_dictation: 5000
+  avg_latency_ms_ambient: 9000
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Template routing
+# ─────────────────────────────────────────────────────────────────────────────
+templates:
+  dictation_default: ortho_follow_up      # short single-speaker dictations
+  ambient_default: ortho_initial_eval     # multi-speaker encounters
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Post-processor
+# ─────────────────────────────────────────────────────────────────────────────
+postprocessor:
+  avg_corrections_dictation: 6
+  avg_corrections_ambient: 10
+  # symspellpy: not installed in current env — medical spell check disabled
+  # install: pip install symspellpy  (enables Stage 10-11 of the 12-stage pipeline)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fixes implemented in v2 (for documentation)
+# ─────────────────────────────────────────────────────────────────────────────
+v2_fixes:
+  - "Template loading: direct filename match before specialty/visit_type fallback"
+  - "Confidence scorer: template-aware (uses template required sections)"
+  - "PHI header stripping: structured header lines (LAST NAME: X)"
+  - "PHI spoken stripping: inline spelled-out PHI (last name is G-R-A-M-B-L-I-N)"
+  - "LLM refusal retry: detect refusal + retry with override prompt for garbled ASR"
+  - "Template routing: ortho_follow_up for dictation, ortho_initial_eval for ambient"
+  - "Anti-refusal system prompt: HIPAA-compliant workflow context + must-generate directive"

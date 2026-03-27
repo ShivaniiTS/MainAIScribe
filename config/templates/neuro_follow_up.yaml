@@ -1,0 +1,50 @@
+# Neurology Follow-up Visit template — follow-up neurological encounters.
+name: "Neurology Follow-up"
+specialty: neurology
+visit_type: follow_up
+
+header_fields:
+  - patient_name
+  - date_of_birth
+  - date_of_service
+  - date_of_injury
+  - provider_name
+  - location
+
+sections:
+  - id: history_of_present_illness
+    label: "HISTORY OF PRESENT ILLNESS"
+    required: true
+    prompt_hint: "Interval changes: symptom progression (headache, dizziness, cognitive complaints), medication response and side effects, functional status changes, new symptoms since last visit"
+
+  - id: past_medical_history
+    label: "PAST MEDICAL HISTORY"
+    required: false
+    prompt_hint: "Include if updated since initial; state 'Reviewed and unchanged' if no changes"
+
+  - id: allergies
+    label: "ALLERGIES"
+    required: false
+    prompt_hint: "Include if changed; may omit if unchanged from prior visit"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "Focused neurological exam: mental status, cranial nerves, motor strength, sensory, reflexes, gait; compare to prior visit findings"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered diagnoses with current status (improving/stable/worsening) compared to prior visit"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered plan: medication changes, diagnostic follow-up, referral updates, activity/work modifications, cognitive rehabilitation, next follow-up"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units

@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(tee /tmp/batch_v2c.log)",
+      "Bash(tee /tmp/batch_v2_final.log)",
+      "Bash(python3 -c \":*)",
+      "Bash(PYTHONPATH=. python3 -c \":*)",
+      "Bash(python -m pytest tests/quality/test_regression.py -v)",
+      "Bash(ls output/*.md)",
+      "Bash(python -c \"from api.routes import encounters, patients; print\\(''OK''\\)\")",
+      "Bash(python -c \"from api.routes import encounters, patients; from api import data_loader as dl; print\\(''VERSIONS:'', dl.VERSIONS[:5]\\); print\\(''LATEST:'', dl.LATEST_VERSION\\); print\\(''OK''\\)\")",
+      "Bash(ls -la output/conversation/dr_mohammed_alwahaidy/bernadeen_hoard_195713_20260218/generated_note_v*.md)",
+      "Read(//home/sanket/code/ai-scribe-enterprise/**)",
+      "Bash(grep -i \"rerun\\\\|pipeline\\\\|v9\\\\|bernadeen\" /tmp/uvicorn*.log)",
+      "Bash(python -c \"from api.data_loader import list_samples, get_versions, get_latest_version; print\\(''get_versions:'', get_versions\\(\\)[:5]\\); print\\(''get_latest_version:'', get_latest_version\\(\\)\\); samples = list_samples\\(\\); s = [x for x in samples if len\\(x[''versions'']\\) > 0]; print\\(f''{len\\(s\\)} samples with versions''\\); print\\(''First sample versions:'', s[0][''versions''] if s else ''none''\\)\")",
+      "Bash(python -c \"from api.data_loader import list_samples, get_versions, get_latest_version; print\\(''get_versions:'', get_versions\\(\\)[:5]\\); print\\(''get_latest_version:'', get_latest_version\\(\\)\\); samples = list_samples\\(\\); s = [x for x in samples if len\\(x[''versions'']\\) > 0]; print\\(f''{len\\(s\\)} samples with versions''\\); print\\(''First sample versions:'', s[0][''versions''][:3] if s else ''none''\\)\")",
+      "Bash(find /home/sanket/code/ai-scribe-enterprise/output -type d -name *_TEST* -o -name *TEST*)",
+      "Bash(xargs ls:*)",
+      "Bash(python -c \"from orchestrator.nodes.note_node import _short_transcript_warning; print\\(repr\\(_short_transcript_warning\\(''The patient present with something.''\\)\\)\\); print\\(repr\\(_short_transcript_warning\\(''x'' * 300\\)\\)\\)\")"
+    ],
+    "additionalDirectories": [
+      "/home/sanket/.claude/projects/-home-sanket-code-ai-scribe-enterprise",
+      "/home/sanket/code/ai-scribe-enterprise"
+    ]
+  }
+}

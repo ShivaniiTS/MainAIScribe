@@ -1,0 +1,17 @@
+{
+  "encounter_id": "225106",
+  "date_of_exam": "2026-03-03",
+  "date_of_accident": "2025-12-13",
+  "case_number": "WC 121325",
+  "visit_type": "follow_up",
+  "location": "HYATTSVILLE",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": "",
+  "mode": "dictation",
+  "provider_id": "dr_mohammed_alwahaidy",
+  "audio_file": "dictation.mp3"
+}

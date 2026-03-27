@@ -1,0 +1,57 @@
+# Cardiology specialty vocabulary
+myocardial
+myocardium
+pericardium
+pericarditis
+endocardium
+atrium
+atrial
+ventricle
+ventricular
+aorta
+aortic
+mitral
+tricuspid
+pulmonary valve
+coronary
+coronary artery disease
+CAD
+angina
+pectoris
+arrhythmia
+fibrillation
+flutter
+tachycardia
+bradycardia
+SVT
+WPW
+heart block
+sinus rhythm
+NSR
+EKG
+echocardiogram
+stress test
+catheterization
+angiography
+stent
+CABG
+bypass
+CHF
+cardiomyopathy
+hypertrophy
+ejection fraction
+BNP
+troponin
+CK-MB
+hypertension
+hyperlipidemia
+dyslipidemia
+anticoagulation
+warfarin
+heparin
+aspirin
+clopidogrel
+statin
+beta-blocker
+ACE inhibitor
+ARB

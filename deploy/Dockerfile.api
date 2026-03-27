@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY pyproject.toml .
+RUN pip install --no-cache-dir ".[api]"
+
+# Copy source (data dirs are mounted as volumes)
+COPY api/ api/
+COPY config/ config/
+COPY mcp_servers/ mcp_servers/
+COPY orchestrator/ orchestrator/
+COPY output/ output/
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

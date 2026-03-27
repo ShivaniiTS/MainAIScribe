@@ -1,0 +1,62 @@
+[project]
+name = "ai-scribe"
+version = "0.1.0"
+description = "Fully self-hosted, HIPAA-compliant AI medical scribe"
+requires-python = ">=3.11"
+dependencies = [
+    # Orchestration
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+    # Data modeling
+    "pydantic>=2.0",
+    # Async HTTP (MCP server calls)
+    "httpx>=0.27",
+    # Config
+    "pyyaml>=6.0",
+    # Logging
+    "structlog>=24.0",
+    "peft>=0.18.1",
+    "datasets>=4.7.0",
+    "soundfile>=0.13.1",
+    "audiomentations>=0.43.1",
+    "accelerate>=1.13.0",
+    "torchaudio==2.10.0",
+]
+
+[project.optional-dependencies]
+api = [
+    # FastAPI backend (Session 9)
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "orchestrator",
+    "mcp_servers",
+    "postprocessor",
+    "learning",
+    "api",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]

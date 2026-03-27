@@ -1,0 +1,24 @@
+# deploy/Dockerfile.provider — Provider-facing server (CPU, no GPU)
+#
+# Serves: client web UI, mobile API, provider API (proxies to pipeline),
+# EHR stub access, config sync from pipeline server.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies (API extras only — no GPU/ML deps)
+COPY pyproject.toml .
+RUN pip install --no-cache-dir ".[api]"
+
+# Copy source
+COPY api/ api/
+COPY config/ config/
+COPY output/ output/
+
+ENV AI_SCRIBE_SERVER_ROLE=provider-facing
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

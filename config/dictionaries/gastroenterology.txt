@@ -1,0 +1,74 @@
+# Gastroenterology specialty vocabulary
+esophagus
+esophageal
+gastric
+duodenum
+duodenal
+jejunum
+ileum
+colon
+colonic
+sigmoid
+cecum
+rectum
+rectal
+anus
+anal
+sphincter
+hepatic
+hepatitis
+cirrhosis
+fibrosis
+portal hypertension
+ascites
+varices
+splenomegaly
+hepatomegaly
+cholecystitis
+cholelithiasis
+cholangitis
+ERCP
+biliary
+biliary duct
+common bile duct
+pancreatic
+pancreatitis
+amylase
+lipase
+endoscopy
+colonoscopy
+sigmoidoscopy
+EGD
+capsule endoscopy
+biopsy
+polyp
+polypectomy
+adenoma
+Barrett
+GERD
+reflux
+dysphagia
+odynophagia
+dyspepsia
+nausea
+vomiting
+emesis
+hematemesis
+melena
+hematochezia
+diarrhea
+constipation
+bloating
+flatulence
+IBD
+Crohn
+ulcerative colitis
+IBS
+celiac
+Helicobacter pylori
+H. pylori
+PPI
+proton pump inhibitor
+omeprazole
+pantoprazole
+metronidazole

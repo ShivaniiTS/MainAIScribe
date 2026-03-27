@@ -1,0 +1,23 @@
+# Clinical Note — DEVIN MARTIN
+
+**Patient:** DEVIN MARTIN | **DOB:** 1980-03-19
+**Record #:** 1.216668.0 | **Case #:** WC22725
+**Date of Exam:** 2026-02-18 | **Date of Accident:** 2025-02-27
+**Provider:** MOHAMMED ALWAHAIDY
+**Supervising Physician:** CALEB ADEMILOYE, NP
+**Location:** GLEN BURNIE
+
+---
+
+## Follow Up Report
+The patient returns for a follow-up. She notes there has only been slight improvements since her last visit. She still has ongoing multiple complaints with left knee and right shoulder pain, stiffness, and weakness. Next is data 128, 26. Patient name is C-A-R-E-N. Last name is Shaw. Date of birth: 12/28/71. Date of accident: 12/15/25. Office Wilmington, HPI. The right shoulder pain is still worse than any type of overhead raising or reaching and still unable to sleep on her right side. Ongoing left knee pain within any simple knee bending activities, including walking and stair climbing, and still unable to kneel. She still notes that the left knee abrasion is painful. The low back pain is still worse to the right side. She still denies any obvious radicular complaints. Any turning or bending activities of her lumbar spine is still painful. She continues therapy at Excelsior Wilmington two times per week and at Concentra one time per month, which is still helping.. Review assistance pertinent for a multiple injuries and work-related accident on 12-15-25. Objective,: the patient has an improved appearing gait, but it is still slow with some favoring of the left lower extremity..
+## History Of Present Illness
+She still has ongoing multiple complaints with left knee and right shoulder pain, stiffness, and weakness.
+## Objective
+the patient has an improved appearing gait, but it is still slow with some favoring of the left lower extremity.. Left knee motion is 0 to 110 degrees with pain, especially at terminal motion. Less diffuse anterior edema. Ongoing anterior tenderness, especially to the anterior medial aspects. Healed 1 centimeter abrasion in the anterior medial aspect with tenderness and sensitivity.. Cruciate and collateral ligaments are grossly intact. Positive memories for pain to the medial and lateral compartments. Minimal joint effusion. Cavs are soft and non-tender with negative homozygous signs and no gross signs of DVT.. Right shoulder motion is still limited to 90 degrees of active core reflection and abduction with pain throughout. 150 degrees passively, but with significant increased pain. 160 degrees on the left without pain. External rotation to 40 degrees 50 degrees on the right versus 50 degrees on the left. Positive impingement sign, cross-arm adduction, speeds, and apprehension on the right. Apprehension is positive for pain without gross instability. Grossly intact sensation about the right shoulder region.. For the lumbar spine motion is 60% of normal. Extension is still more limited, secondary to increased pain. Parateval spasm and tenderness throughout the lumbar region. Straight leg raise increases, low back pain without obvious radicular symptoms, distally. Lower extremity reflexes are plus one in symmetric. Bilateral EHL/DF/PF is 5/5. assessment.
+## Assessment
+**For the next sentence, please use bold red. Please use the same information from the note dated 12-24-25.**. plan. plan.
+## Plan
+I had another long, detailed discussion with the patient. Activity modification during and discussed. The patient will continue chiropractic-/-therapy treatment.. Continue Flexerol 10 mg BID PRN and Lidocaine 5% topical 3 g TID PRN. No alcohol, operating machinery, or driving a car while using the flexible. The patient continues her eloquent anticoagulation.. Continue the left knee hinge brace as needed for confidence support.
+
+The patient was asked to help sustain her prior records and imaging studies. She knows that she recently underwent a right shoulder MRI study, and requests were made to obtain the results.. She also notes upcoming left knee MRI scheduled. I have also given her a prescription to obtain an MRI of the lumbar spine to further evaluate the ongoing complaints. Patient remains unable to return to her pre-injury job, this time secondary to her injuries and ongoing symptoms. The patient is still very limited from a physical standpoint at this time.. Return in about four weeks for follow-up and clinical re-evaluation. All questions and concerns are fully answered and addressed.

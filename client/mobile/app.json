@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "AI Scribe",
+    "slug": "ai-scribe",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.talismansolutions.aiscribe",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "AI Scribe needs microphone access to record medical encounters for transcription."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#00B27A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.talismansolutions.aiscribe",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "AI Scribe needs microphone access to record medical encounters."
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "encounter_id": "195713",
+  "date_of_exam": "2026-02-18",
+  "date_of_accident": "2023-06-16",
+  "case_number": "WC061623",
+  "visit_type": "initial",
+  "mode": "conversation",
+  "location": "GLEN BURNIE",
+  "provider": {
+    "first_name": "MOHAMMED",
+    "last_name": "ALWAHAIDY",
+    "full_name": "MOHAMMED ALWAHAIDY"
+  },
+  "supervising_physician": "",
+  "provider_id": "dr_mohammed_alwahaidy",
+  "audio_file": "conversation_audio.mp3"
+}

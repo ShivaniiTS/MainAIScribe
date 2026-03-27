@@ -1,0 +1,202 @@
+# Chiropractic specialty vocabulary
+# Anatomy — Spine
+cervical
+thoracic
+lumbar
+sacral
+coccyx
+vertebra
+vertebrae
+intervertebral
+facet
+foramen
+stenosis
+spondylosis
+spondylolisthesis
+annulus
+nucleus pulposus
+herniation
+radiculopathy
+myelopathy
+subluxation
+fixation
+segmental dysfunction
+spinal motion segment
+paraspinal
+paravertebral
+interspinous
+supraspinous
+cervicothoracic
+thoracolumbar
+lumbosacral
+sacroiliac
+# Anatomy — Joints
+glenohumeral
+acromioclavicular
+sternoclavicular
+temporomandibular
+costochondral
+costovertebral
+# Examination
+palpation
+hypertonicity
+hypotonicity
+spasm
+trigger point
+myofascial
+tenderness
+crepitus
+range of motion
+ROM
+flexion
+extension
+lateral flexion
+rotation
+circumduction
+abduction
+adduction
+goniometry
+orthopedic test
+Kemp test
+straight leg raise
+SLR
+Valsalva
+Spurling test
+Adson test
+Yeoman test
+Gaenslen test
+Patrick test
+FABER
+FADIR
+Ober test
+Thomas test
+dermatomal
+myotomal
+deep tendon reflex
+DTR
+Babinski
+Hoffman sign
+clonus
+# Diagnoses
+subluxation complex
+vertebral subluxation
+sprain
+strain
+disc herniation
+disc protrusion
+disc extrusion
+disc bulge
+degenerative disc disease
+DDD
+degenerative joint disease
+DJD
+osteoarthritis
+facet syndrome
+sacroiliac dysfunction
+SI joint
+piriformis syndrome
+thoracic outlet syndrome
+carpal tunnel syndrome
+lateral epicondylitis
+medial epicondylitis
+adhesive capsulitis
+impingement
+tendinopathy
+tendinitis
+bursitis
+myalgia
+myositis
+fibromyalgia
+whiplash
+cervicogenic headache
+post-traumatic
+post-concussion
+# Treatment Modalities
+spinal manipulation
+spinal adjustment
+diversified technique
+Gonstead
+Thompson technique
+drop table
+Activator method
+flexion-distraction
+Cox technique
+instrument-assisted
+IASTM
+Graston
+myofascial release
+active release technique
+ART
+soft tissue mobilization
+joint mobilization
+manual therapy
+traction
+cervical traction
+lumbar traction
+decompression
+interferential current
+IFC
+electrical muscle stimulation
+EMS
+TENS
+transcutaneous electrical nerve stimulation
+ultrasound therapy
+therapeutic ultrasound
+cryotherapy
+thermotherapy
+moist heat
+ice pack
+cold laser
+low-level laser therapy
+LLLT
+kinesiology tape
+kinesiotaping
+therapeutic exercise
+rehabilitation
+corrective exercise
+stabilization
+core strengthening
+McKenzie
+Williams flexion
+postural correction
+ergonomic counseling
+# Imaging
+X-ray
+radiograph
+MRI
+CT scan
+bone scan
+DEXA
+flexion-extension views
+AP view
+lateral view
+oblique view
+disc space narrowing
+osteophyte
+spur formation
+foraminal narrowing
+central canal stenosis
+lateral recess stenosis
+Modic changes
+# Billing / Documentation
+evaluation and management
+E/M
+CMT
+chiropractic manipulative treatment
+spinal region
+extraspinal region
+extremity adjustment
+re-evaluation
+progress examination
+maximum medical improvement
+MMI
+treatment plan
+frequency
+duration
+functional outcome
+pain scale
+VAS
+NRS
+Oswestry
+Neck Disability Index
+NDI

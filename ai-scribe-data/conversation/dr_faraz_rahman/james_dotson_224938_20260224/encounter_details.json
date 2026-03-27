@@ -1,0 +1,15 @@
+{
+  "encounter_id": "224938",
+  "date_of_exam": "2026-02-24",
+  "date_of_accident": "2025-12-14",
+  "case_number": "WC121425",
+  "visit_type": "initial",
+  "mode": "conversation",
+  "location": "PATTERSON",
+  "provider": {
+    "first_name": "FARAZ",
+    "last_name": "RAHMAN",
+    "full_name": "FARAZ RAHMAN"
+  },
+  "supervising_physician": ""
+}

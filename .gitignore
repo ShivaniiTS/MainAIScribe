@@ -1,0 +1,86 @@
+# Audio files — large, contain PHI voice data
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.flac
+
+# Word documents (gold note source — converted to .md already)
+*.doc
+*.docx
+
+# Legacy data directories (replaced by ai-scribe-data/)
+data/dictation/
+data/conversation/
+data/conversations/
+
+# ASR training data (generated, large)
+data/asr_training/
+
+# Transcript caches (large JSON blobs, regenerable)
+output/transcript_cache_*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude local settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+.next/
+out/
+
+# Models (large files)
+*.bin
+*.pt
+*.pth
+*.onnx
+*.gguf
+models/
+
+# Docker
+.docker/
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Temp / scratch
+tmp/
+memory/
+
+# Pytest
+.pytest_cache/
+
+# Quality experiments log (may contain PHI references)
+quality/experiments.jsonl

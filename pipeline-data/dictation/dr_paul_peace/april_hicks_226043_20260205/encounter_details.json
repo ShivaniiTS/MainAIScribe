@@ -1,0 +1,17 @@
+{
+  "encounter_id": "226043",
+  "date_of_exam": "2026-02-05",
+  "date_of_accident": "2026-01-19",
+  "case_number": "AA 011926",
+  "visit_type": "initial",
+  "location": "CATONSVILLE",
+  "provider": {
+    "first_name": "PAUL",
+    "last_name": "PEACE",
+    "full_name": "PAUL PEACE"
+  },
+  "supervising_physician": "",
+  "mode": "dictation",
+  "provider_id": "dr_paul_peace",
+  "audio_file": "dictation.mp3"
+}

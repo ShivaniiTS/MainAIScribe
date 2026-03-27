@@ -1,0 +1,6 @@
+{
+  "visit_type": "follow_up",
+  "mode": "dictation",
+  "provider_id": "dr_test",
+  "audio_file": "dictation.mp3"
+}

@@ -1,0 +1,78 @@
+# Chiropractic Initial Evaluation template — comprehensive first-visit musculoskeletal encounters.
+name: "Chiropractic Initial Evaluation"
+specialty: chiropractic
+visit_type: initial_evaluation
+
+header_fields:
+  - patient_name
+  - date_of_birth
+  - date_of_service
+  - date_of_injury
+  - mechanism_of_injury
+  - provider_name
+  - referring_provider
+  - location
+  - case_number
+
+sections:
+  - id: chief_complaint
+    label: "CHIEF COMPLAINT"
+    required: true
+    prompt_hint: "One-sentence reason for visit including affected body regions and mechanism of injury"
+
+  - id: history_of_present_illness
+    label: "HISTORY OF PRESENT ILLNESS"
+    required: true
+    prompt_hint: "Mechanism of injury and date, emergency room evaluation if applicable, prior treatment received, current symptoms with severity (0-10 scale), pain character and location, aggravating and alleviating factors, functional limitations"
+
+  - id: past_medical_history
+    label: "PAST MEDICAL HISTORY"
+    required: true
+    prompt_hint: "Relevant medical conditions; state 'Noncontributory' if not mentioned"
+
+  - id: past_surgical_history
+    label: "PAST SURGICAL HISTORY"
+    required: false
+    prompt_hint: "Prior surgical procedures; state 'None reported' if not mentioned"
+
+  - id: medications
+    label: "CURRENT MEDICATIONS"
+    required: true
+    prompt_hint: "Medication name, dose, frequency"
+
+  - id: allergies
+    label: "ALLERGIES"
+    required: true
+    prompt_hint: "Drug allergies; write 'NKDA' if no known drug allergies"
+
+  - id: review_of_systems
+    label: "REVIEW OF SYSTEMS"
+    required: true
+    prompt_hint: "Pertinent positives and negatives by system; include musculoskeletal, neurological at minimum"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "Inspection, palpation (tenderness, spasm, trigger points), range of motion, strength grading, neurological screening (sensation, reflexes), special tests as applicable"
+
+  - id: imaging
+    label: "DIAGNOSTIC EXAM"
+    required: false
+    prompt_hint: "Imaging or diagnostic studies ordered or reviewed; modality, body part, findings; omit if not mentioned"
+
+  - id: assessment
+    label: "ASSESSMENT"
+    required: true
+    prompt_hint: "Numbered diagnoses; note post-traumatic etiology; include involved side (right/left/bilateral)"
+
+  - id: plan
+    label: "PLAN"
+    required: true
+    prompt_hint: "Numbered plan: chiropractic treatment plan, physical therapy referral, medications, injections, work status, follow-up interval"
+
+formatting:
+  voice: active
+  tense: past
+  person: third
+  abbreviations: spell_out
+  measurements: include_units

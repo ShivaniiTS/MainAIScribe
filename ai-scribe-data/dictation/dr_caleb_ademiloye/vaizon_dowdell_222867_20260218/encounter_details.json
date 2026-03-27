@@ -1,0 +1,14 @@
+{
+  "encounter_id": "222867",
+  "date_of_exam": "2026-02-18",
+  "date_of_accident": "2025-09-26",
+  "case_number": "AA092625",
+  "visit_type": "initial",
+  "location": "CAMP SPRINGS",
+  "provider": {
+    "first_name": "CALEB",
+    "last_name": "ADEMILOYE",
+    "full_name": "CALEB ADEMILOYE"
+  },
+  "supervising_physician": "CALEB ADEMILOYE, NP"
+}

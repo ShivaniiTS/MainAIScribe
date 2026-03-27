@@ -137,6 +137,7 @@ def _find_sample_dirs(sample_id: str) -> tuple[Path | None, Path | None, str, st
 @router.post("/upload", response_model=PipelineUploadResponse)
 async def upload_encounter(
     audio: UploadFile = File(...),
+    note_audio: Optional[UploadFile] = File(None),
     sample_id: str = Form(...),
     mode: str = Form("dictation"),
     provider_id: str = Form(""),
@@ -162,6 +163,12 @@ async def upload_encounter(
     audio_path = encounter_dir / audio_filename
     content = await audio.read()
     audio_path.write_bytes(content)
+
+    # Save note dictation audio if provided (conversation mode dual-audio)
+    if note_audio and note_audio.filename:
+        note_audio_path = encounter_dir / "note_audio.mp3"
+        note_content = await note_audio.read()
+        note_audio_path.write_bytes(note_content)
 
     # Save encounter details (de-identified)
     try:
@@ -218,7 +225,7 @@ async def trigger_pipeline(job_id: str, req: PipelineTriggerRequest | None = Non
     # Find audio file
     data_dir = Path(job["data_dir"])
     audio_path = None
-    for candidate in ["dictation.mp3", "conversation_audio.mp3", "notes.mp3"]:
+    for candidate in ["dictation.mp3", "conversation_audio.mp3", "note_audio.mp3"]:
         p = data_dir / candidate
         if p.exists():
             audio_path = str(p)
@@ -258,7 +265,7 @@ async def trigger_pipeline(job_id: str, req: PipelineTriggerRequest | None = Non
     # Check for note audio (conversation mode)
     note_audio_path = None
     if data_mode == "conversation":
-        for candidate in ["notes.mp3", "note_audio.mp3"]:
+        for candidate in ["note_audio.mp3"]:
             p = data_dir / candidate
             if p.exists():
                 note_audio_path = str(p)
@@ -692,7 +699,7 @@ async def _run_batch(job_ids: list[str], version: str | None, two_pass: bool) ->
 
         note_audio_path = None
         if data_mode == "conversation":
-            for candidate in ["notes.mp3", "note_audio.mp3"]:
+            for candidate in ["note_audio.mp3"]:
                 p = data_dir / candidate
                 if p.exists():
                     note_audio_path = str(p)

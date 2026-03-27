@@ -44,7 +44,6 @@ SAFE_FILES = {
     "dictation.mp3",
     "conversation_audio.mp3",
     "note_audio.mp3",
-    "notes.mp3",
     "encounter_details.json",
 }
 

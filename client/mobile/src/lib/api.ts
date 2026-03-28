@@ -201,10 +201,12 @@ export async function uploadEncounterAudio(
     type: "audio/m4a",
   } as unknown as Blob);
 
+  // Don't set Content-Type manually — fetch auto-adds the multipart boundary
+  const { "Content-Type": _, ...headersWithoutCT } = COMMON_HEADERS;
   const res = await fetch(`${base}/encounters/${encounterId}/upload`, {
     method: "POST",
     body: form,
-    headers: { ...COMMON_HEADERS, "Content-Type": "multipart/form-data" },
+    headers: headersWithoutCT,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: `Upload failed (${res.status})` }));

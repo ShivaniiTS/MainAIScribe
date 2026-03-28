@@ -87,6 +87,8 @@ class EncounterCreateRequest(BaseModel):
     patient_id: str
     visit_type: str = "follow_up"
     mode: str = "dictation"  # "dictation" | "ambient"
+    patient_name: Optional[str] = None  # "Firstname Lastname" — avoids roster lookup
+    encounter_id: Optional[str] = None  # Use MDCO encounter ID instead of generating UUID
 
 
 class EncounterResponse(BaseModel):
@@ -97,3 +99,4 @@ class EncounterResponse(BaseModel):
     visit_type: str
     mode: str
     message: Optional[str] = None
+    patient_name: Optional[str] = None

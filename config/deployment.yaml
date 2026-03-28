@@ -35,7 +35,7 @@ network:
     api_port: 8100
     web_port: 3100
     # Internal URL for the pipeline API (used by provider-facing server to proxy)
-    internal_url: "http://localhost:8100"
+    internal_url: "http://98.88.67.46:8100"
     # Admin web UI URL
     admin_url: "http://localhost:3100"
 

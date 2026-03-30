@@ -20,7 +20,7 @@ dependencies = [
     "soundfile>=0.13.1",
     "audiomentations>=0.43.1",
     "accelerate>=1.13.0",
-    "torchaudio==2.10.0",
+    "torchaudio==2.8.0",
 ]
 
 [project.optional-dependencies]

@@ -10,7 +10,7 @@
 
 server:
   # Which role this server instance plays
-  role: "provider-facing"  # "provider-facing" | "processing-pipeline"
+  role: "processing-pipeline"  # "provider-facing" | "processing-pipeline"
 
   # Unique identifier for this server instance (used in logs, sync tracking)
   instance_id: "ai-scribe-dev-01"

@@ -98,30 +98,40 @@ export default function CapturePage() {
       .catch(() => {});
 
     // Preload NeMo streaming model so it's warm when recording starts
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    // Default to port 8100 (pipeline server); override via NEXT_PUBLIC_API_URL
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8100";
     fetch(`${apiBase}/asr/preload`, { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
         if (data.status === "ready") {
           setAsrReady(true);
+        } else if (data.status === "failed" || data.status === "unavailable") {
+          // Engine failed to load — let user try anyway (will fail at record time)
+          setAsrReady(true);
         } else {
-          // Poll until ready
+          // Poll until ready — NeMo model can take 2-10 min on first download
           const poll = setInterval(() => {
             fetch(`${apiBase}/asr/status`)
               .then((r) => r.json())
               .then((s) => {
-                if (s.status === "ready") {
+                if (s.status === "ready" || s.status === "failed") {
                   setAsrReady(true);
                   clearInterval(poll);
                 }
               })
               .catch(() => {});
-          }, 2000);
-          // Stop polling after 30s
-          setTimeout(() => clearInterval(poll), 30000);
+          }, 3000);
+          // After 10 min, stop polling and allow user to try regardless
+          setTimeout(() => {
+            clearInterval(poll);
+            setAsrReady(true);
+          }, 600000);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // API unreachable — allow user to try anyway
+        setAsrReady(true);
+      });
   }, []);
 
   // Load default patients on mount (empty query returns first 10)

@@ -77,8 +77,12 @@ async def streaming_model_status():
     """Check if the streaming ASR model is loaded and ready."""
     for mode in ("dictation", "ambient"):
         engine = _get_streaming_engine(mode)
-        if engine and hasattr(engine, '_loaded') and engine._loaded and engine._model is not None:
-            return {"status": "ready", "engine": engine.name, "model": engine.model_name}
+        if engine and hasattr(engine, '_loaded') and engine._loaded:
+            if engine._model is not None:
+                return {"status": "ready", "engine": engine.name, "model": engine.model_name}
+            # Loaded flag set but model is None → load failed
+            error_detail = getattr(engine, '_load_error', 'unknown error')
+            return {"status": "failed", "message": f"Model load failed: {error_detail}"}
 
     if _preload_task and not _preload_task.done():
         return {"status": "loading"}

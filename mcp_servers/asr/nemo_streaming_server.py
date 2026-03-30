@@ -86,6 +86,7 @@ class NemoStreamingServer(ASREngine):
         self._model = None
         self._model_lock = threading.Lock()
         self._loaded = False
+        self._load_error: Optional[str] = None
 
         # Active streaming sessions
         self._sessions: dict[str, StreamingSession] = {}
@@ -126,15 +127,16 @@ class NemoStreamingServer(ASREngine):
                 self._loaded = True
                 logger.info("nemo_streaming: model loaded successfully")
             except ImportError:
-                logger.warning(
-                    "nemo_streaming: NeMo not installed — streaming will use simulation mode. "
-                    "Install with: pip install nemo_toolkit[asr]"
-                )
+                msg = "NeMo not installed — install with: pip install nemo_toolkit[asr]"
+                logger.warning("nemo_streaming: %s", msg)
                 self._model = None
+                self._load_error = msg
                 self._loaded = True  # Mark as loaded so we don't retry
             except Exception as exc:
-                logger.error("nemo_streaming: failed to load model — %s", exc)
+                msg = str(exc)
+                logger.error("nemo_streaming: failed to load model — %s", msg)
                 self._model = None
+                self._load_error = msg
                 self._loaded = True
 
     def unload_model(self) -> None:

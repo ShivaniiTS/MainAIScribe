@@ -118,6 +118,9 @@ features:
     view_specialties: true
     view_templates: true
     view_quality: true
+    # Admin-side capture/testing (NeMo live + upload) on pipeline UI
+    record_audio: true
+    trigger_pipeline: true
     # Pipeline execution
     run_pipeline: true
     batch_processing: true
@@ -130,7 +133,7 @@ features:
     edit_specialties: true
     # No direct EHR access (EHR data stays on provider-facing)
     ehr_access: false
-    patient_search: false
+    patient_search: true
 
 # ---------------------------------------------------------------------------
 # Security & PHI isolation

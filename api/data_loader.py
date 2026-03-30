@@ -147,6 +147,8 @@ def list_samples() -> list[dict]:
 
     # 1. Walk output/ first (these have generated notes)
     for mode, physician, sample_id, out_dir in _walk_encounters(OUTPUT_DIR):
+        if sample_id in seen:
+            continue
         seen.add(sample_id)
         versions_available = _discover_sample_versions(out_dir)
         has_gold = _has_gold(sample_id)

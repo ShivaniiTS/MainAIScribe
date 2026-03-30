@@ -136,7 +136,7 @@ export default function SamplesTable({ samples }: { samples: SampleSummary[] }) 
           <tbody>
             {filtered.map((s) => (
               <tr
-                key={s.sample_id}
+                key={`${s.sample_id}_${s.mode}`}
                 className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
               >
                 <td className="px-4 py-3 text-xs text-gray-800 font-medium max-w-[200px] truncate">

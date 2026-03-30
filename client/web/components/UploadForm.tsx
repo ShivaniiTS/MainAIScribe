@@ -3,8 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, FileAudio, Loader2, CheckCircle2 } from "lucide-react";
 import type { ProviderSummary } from "@/lib/api";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { BASE } from "@/lib/api";
 
 const VISIT_TYPES = [
   { value: "initial_evaluation", label: "Initial Evaluation" },

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import MarkdownViewer from "./MarkdownViewer";
 import QualityPanel from "./QualityPanel";
 import type { QualityScore } from "@/lib/api";
-import { fetchNote, fetchTranscript } from "@/lib/api";
+import { fetchNote, fetchTranscript, BASE } from "@/lib/api";
 
 interface Props {
   sampleId: string;
@@ -100,7 +100,7 @@ function AudioPlayer({ sampleId }: { sampleId: string }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  
   const src = `${BASE}/encounters/${sampleId}/audio`;
 
   const toggle = () => {

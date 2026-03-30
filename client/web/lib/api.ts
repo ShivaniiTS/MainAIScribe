@@ -1,4 +1,15 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8100";
+// Derive API base at runtime so it works on any server without .env.local.
+// - If NEXT_PUBLIC_API_URL is set (e.g. in production .env.local), use it.
+// - In the browser: use the page's own hostname + port 8100 (pipeline API).
+// - During SSR on the server: localhost:8100 is correct (same machine).
+function _getApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8100`;
+  }
+  return "http://localhost:8100";
+}
+export const BASE = _getApiBase();
 
 export interface SampleSummary {
   sample_id: string;

@@ -207,9 +207,14 @@ class NemoStreamingServer(ASREngine):
 
     # ── Streaming transcription ──────────────────────────────────────────
 
-    # Transcribe only the latest N seconds (not the full buffer)
-    # Lower = more responsive but more GPU calls. 1s gives ~100ms inference per window.
-    STREAM_WINDOW_S = 1.0
+    # Run decode every N seconds of NEW audio.
+    # Lower = more responsive but more GPU calls.
+    STREAM_STEP_S = 1.0
+    # Context window fed to NeMo for each decode. Larger windows improve linguistic
+    # coherence and reduce fragmented/garbled output.
+    STREAM_CONTEXT_S = 8.0
+    # Wait for a minimum amount of audio before first decode.
+    STREAM_MIN_AUDIO_S = 2.0
 
     async def transcribe_stream(
         self,
@@ -220,9 +225,12 @@ class NemoStreamingServer(ASREngine):
         """
         Process a streaming audio chunk and yield partial transcripts.
 
-        Strategy: sliding window — only transcribe the latest STREAM_WINDOW_S
-        seconds of new audio (not the growing full buffer). Each window is
-        independent, giving O(1) latency regardless of session length.
+        Strategy: rolling context window.
+
+        Every STREAM_STEP_S of new audio, decode the latest STREAM_CONTEXT_S
+        seconds (not the entire session). Then emit only the incremental suffix
+        compared to the prior decode. This preserves sentence context while
+        keeping latency bounded.
 
         If NeMo is not installed, uses a simulation mode for UI development.
         """
@@ -240,18 +248,27 @@ class NemoStreamingServer(ASREngine):
             session.chunk_count += 1
             session.elapsed_ms += self.chunk_size_ms
 
-        # Check if we have enough new audio since last transcription
+        total_bytes = len(session.full_pcm)
+        total_seconds = total_bytes / (self.sample_rate * 2)
+
+        # Wait for enough audio before first decode.
+        if total_seconds < self.STREAM_MIN_AUDIO_S:
+            return
+
+        # Check if we have enough NEW audio since last decode.
         new_bytes = len(session.full_pcm) - session.last_transcribed_bytes
         new_seconds = new_bytes / (self.sample_rate * 2)
 
-        if new_seconds < self.STREAM_WINDOW_S:
+        if new_seconds < self.STREAM_STEP_S:
             return
 
-        start_ms = session.last_transcribed_bytes * 1000 // (self.sample_rate * 2)
+        # Decode a rolling context window ending at current audio tail.
+        context_bytes = int(self.STREAM_CONTEXT_S * self.sample_rate * 2)
+        window_start_byte = max(0, total_bytes - context_bytes)
+        window_start_ms = window_start_byte * 1000 // (self.sample_rate * 2)
         end_ms = session.elapsed_ms
 
-        # Extract only the new audio window (not full buffer)
-        window_pcm = session.full_pcm[session.last_transcribed_bytes:]
+        window_pcm = session.full_pcm[window_start_byte:]
         session.last_transcribed_bytes = len(session.full_pcm)
 
         if self._model is not None:
@@ -259,31 +276,71 @@ class NemoStreamingServer(ASREngine):
                 self._transcribe_window_nemo, window_pcm
             )
         else:
-            result = self._transcribe_window_simulated(session, start_ms, end_ms)
+            result = self._transcribe_window_simulated(session, window_start_ms, end_ms)
 
         if result:
-            text = result.get("text", "").strip()
+            text = " ".join(result.get("text", "").split())
             confidence = result.get("confidence", 0.9)
 
             if text:
+                delta_text = self._extract_incremental_text(session.last_transcription, text)
+                session.last_transcription = text
+
+                if not delta_text:
+                    return
+
+                # Approximate timing for incremental emission using decode step.
+                emit_dur_ms = int(self.STREAM_STEP_S * 1000)
+                emit_start_ms = max(window_start_ms, end_ms - emit_dur_ms)
+
                 partial = PartialTranscript(
-                    text=text,
+                    text=delta_text,
                     is_final=True,
                     speaker=None,
-                    start_ms=start_ms,
+                    start_ms=emit_start_ms,
                     end_ms=end_ms,
                     confidence=confidence,
                 )
 
-                session.accumulated_text += text + " "
+                session.accumulated_text += delta_text + " "
                 session.segments.append(RawSegment(
-                    text=text,
-                    start_ms=start_ms,
+                    text=delta_text,
+                    start_ms=emit_start_ms,
                     end_ms=end_ms,
                     confidence=confidence,
                 ))
 
                 yield partial
+
+    @staticmethod
+    def _extract_incremental_text(previous: str, current: str) -> str:
+        """Return the new suffix in `current` compared with `previous`.
+
+        NeMo may slightly rewrite the same phrase across successive decodes.
+        We detect overlapping tail/head tokens and emit only truly new words.
+        """
+        previous = " ".join(previous.split())
+        current = " ".join(current.split())
+
+        if not current:
+            return ""
+        if not previous:
+            return current
+        if current == previous:
+            return ""
+        if current.startswith(previous):
+            return current[len(previous):].strip()
+
+        prev_words = previous.split()
+        curr_words = current.split()
+        max_overlap = min(12, len(prev_words), len(curr_words))
+
+        for k in range(max_overlap, 0, -1):
+            if prev_words[-k:] == curr_words[:k]:
+                return " ".join(curr_words[k:]).strip()
+
+        # If no meaningful overlap exists, avoid emitting a likely rewrite.
+        return ""
 
     def _transcribe_window_nemo(self, window_pcm: bytes) -> dict:
         """Transcribe a single audio window via NeMo (runs in thread).

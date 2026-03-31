@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from pathlib import Path
 from typing import Optional
@@ -193,6 +194,83 @@ class ProviderManager:
 
         profile = self.load_or_default(provider_id)
         return profile.template_id or "soap_default"
+
+    @staticmethod
+    def _name_tokens(value: str) -> set[str]:
+        """Tokenize provider labels for robust matching.
+
+        Handles values like:
+        - "dr_mohammed_alwahaidy"
+        - "Dr. Mohammed Alwahaidy"
+        - "Alwahaidy, Mohammed"
+        """
+        if not value:
+            return set()
+        cleaned = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+        tokens = {t for t in cleaned.split() if t}
+        # Ignore common title/credential tokens in fuzzy matching.
+        stop = {"dr", "doctor", "md", "do", "dc", "pa", "np"}
+        return {t for t in tokens if t not in stop}
+
+    def resolve_provider_id(self, provider_id: str | None, provider_name: str | None = None) -> str:
+        """Resolve an incoming provider identifier to a configured provider profile ID.
+
+        Prefers exact profile ID matches; falls back to fuzzy matching against profile
+        names (e.g. "Alwahaidy, Mohammed" -> "dr_mohammed_alwahaidy").
+        """
+        raw_id = (provider_id or "").strip()
+        raw_name = (provider_name or "").strip()
+
+        if not raw_id and not raw_name:
+            return ""
+
+        known_ids = self.list_providers()
+
+        # Direct ID match wins immediately.
+        if raw_id in known_ids:
+            return raw_id
+        if raw_name in known_ids:
+            return raw_name
+
+        # Build candidate profile token sets once.
+        candidates: list[tuple[str, set[str], set[str]]] = []
+        for pid in known_ids:
+            profile = self.load_or_default(pid)
+            candidates.append((pid, self._name_tokens(pid), self._name_tokens(profile.name or "")))
+
+        search_values = [v for v in [raw_id, raw_name] if v]
+
+        # Exact normalized token match against profile id/name.
+        for value in search_values:
+            vt = self._name_tokens(value)
+            if not vt:
+                continue
+            for pid, id_tokens, name_tokens in candidates:
+                if vt == id_tokens or vt == name_tokens:
+                    return pid
+
+        # Fuzzy overlap fallback.
+        best_id: str | None = None
+        best_score = 0.0
+        for value in search_values:
+            vt = self._name_tokens(value)
+            if not vt:
+                continue
+            for pid, id_tokens, name_tokens in candidates:
+                for target_tokens in (id_tokens, name_tokens):
+                    if not target_tokens:
+                        continue
+                    overlap = len(vt & target_tokens)
+                    score = overlap / max(len(vt), len(target_tokens))
+                    if overlap >= 2 and score > best_score:
+                        best_score = score
+                        best_id = pid
+
+        if best_id and best_score >= 0.6:
+            return best_id
+
+        # No profile match: preserve caller-provided identifier.
+        return raw_id or raw_name
 
     # ──────────────────────────────────────────────────────────────────────
     # Serialization helpers

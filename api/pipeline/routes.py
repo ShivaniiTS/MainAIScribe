@@ -154,8 +154,23 @@ async def upload_encounter(
 
     data_root = _get_pipeline_data_dir()
 
+    # Canonicalize provider ID so uploaded encounters route to the expected
+    # provider profile/template on the pipeline server.
+    from config.provider_manager import get_provider_manager
+
     data_mode = "conversation" if mode == "ambient" else mode
-    encounter_dir = data_root / data_mode / provider_id / sample_id
+
+    # Parse and normalize encounter details (de-identified).
+    try:
+        details = json.loads(encounter_details)
+    except json.JSONDecodeError:
+        details = {}
+
+    raw_provider_id = (provider_id or str(details.get("provider_id", ""))).strip()
+    provider_name = str(details.get("provider_name") or details.get("provider", "")).strip()
+    canonical_provider_id = get_provider_manager().resolve_provider_id(raw_provider_id, provider_name)
+
+    encounter_dir = data_root / data_mode / canonical_provider_id / sample_id
     encounter_dir.mkdir(parents=True, exist_ok=True)
 
     # Save audio file
@@ -170,13 +185,10 @@ async def upload_encounter(
         note_content = await note_audio.read()
         note_audio_path.write_bytes(note_content)
 
-    # Save encounter details (de-identified)
-    try:
-        details = json.loads(encounter_details)
-    except json.JSONDecodeError:
-        details = {}
     details.setdefault("mode", mode)
-    details.setdefault("provider_id", provider_id)
+    if raw_provider_id and raw_provider_id != canonical_provider_id:
+        details.setdefault("source_provider_id", raw_provider_id)
+    details["provider_id"] = canonical_provider_id
     details.setdefault("audio_file", audio_filename)
     (encounter_dir / "encounter_details.json").write_text(json.dumps(details, indent=2))
 
@@ -189,7 +201,7 @@ async def upload_encounter(
         "pct": 0,
         "message": "Files uploaded — ready for pipeline trigger",
         "mode": mode,
-        "provider_id": provider_id,
+        "provider_id": canonical_provider_id,
         "data_dir": str(encounter_dir),
     }
 

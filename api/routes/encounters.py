@@ -258,11 +258,14 @@ def _load_patient_from_roster(patient_id: str) -> dict | None:
 @router.post("", response_model=EncounterResponse, status_code=201)
 def create_encounter(req: EncounterCreateRequest):
     """Create a new encounter (returns encounter_id for polling)."""
+    from config.provider_manager import get_provider_manager
+
+    canonical_provider_id = get_provider_manager().resolve_provider_id(req.provider_id)
     encounter_id = req.encounter_id or str(uuid.uuid4())[:8]
     enc = {
         "encounter_id": encounter_id,
         "status": "pending",
-        "provider_id": req.provider_id,
+        "provider_id": canonical_provider_id,
         "patient_id": req.patient_id,
         "patient_name": req.patient_name,
         "visit_type": req.visit_type,

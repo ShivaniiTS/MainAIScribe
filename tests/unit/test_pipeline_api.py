@@ -81,6 +81,42 @@ class TestPipelineUpload:
         )
         assert resp.status_code == 422
 
+    def test_upload_canonicalizes_provider_id_from_name(self, client: TestClient, tmp_path):
+        """If provider_id is external (e.g. numeric), provider_name should map to profile ID."""
+        from config import provider_manager as pm
+        from api.pipeline import routes as pipeline_routes
+
+        providers_dir = tmp_path / "providers"
+        providers_dir.mkdir()
+        (providers_dir / "dr_mohammed_alwahaidy.yaml").write_text(
+            "\n".join([
+                "id: dr_mohammed_alwahaidy",
+                "name: Dr. Mohammed Alwahaidy",
+                "specialty: chiropractic",
+            ]) + "\n",
+            encoding="utf-8",
+        )
+
+        original_manager = pm._manager
+        pm._manager = pm.ProviderManager(providers_dir=providers_dir)
+        try:
+            audio = io.BytesIO(b"fake audio data")
+            resp = client.post(
+                "/pipeline/upload",
+                files={"audio": ("test.mp3", audio, "audio/mpeg")},
+                data={
+                    "sample_id": "test_provider_map_001",
+                    "mode": "dictation",
+                    "provider_id": "300",
+                    "encounter_details": json.dumps({"provider_name": "Alwahaidy, Mohammed"}),
+                },
+            )
+            assert resp.status_code == 200
+            job_id = resp.json()["job_id"]
+            assert pipeline_routes._jobs[job_id]["provider_id"] == "dr_mohammed_alwahaidy"
+        finally:
+            pm._manager = original_manager
+
 
 class TestPipelineStatus:
     def test_status_nonexistent_job(self, client: TestClient):

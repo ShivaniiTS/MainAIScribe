@@ -316,28 +316,48 @@ class NemoStreamingServer(ASREngine):
     def _extract_incremental_text(previous: str, current: str) -> str:
         """Return the new suffix in `current` compared with `previous`.
 
-        NeMo may slightly rewrite the same phrase across successive decodes.
-        We detect overlapping tail/head tokens and emit only truly new words.
+        NeMo may slightly rewrite the same phrase across successive decodes
+        AND may change capitalisation between context windows (e.g. "Hello"
+        → "hello my name is").  All comparisons are done case-insensitively
+        so a capitalisation change alone never silences output; the returned
+        text always preserves the original casing from `current`.
         """
         previous = " ".join(previous.split())
         current = " ".join(current.split())
+
+        # Lower-cased copies used only for comparison
+        prev_lc = previous.lower()
+        curr_lc = current.lower()
 
         if not current:
             return ""
         if not previous:
             return current
-        if current == previous:
+        if curr_lc == prev_lc:
             return ""
-        if current.startswith(previous):
+        if curr_lc.startswith(prev_lc):
             return current[len(previous):].strip()
 
         prev_words = previous.split()
         curr_words = current.split()
+        prev_lc_words = prev_lc.split()
+        curr_lc_words = curr_lc.split()
         max_overlap = min(12, len(prev_words), len(curr_words))
 
         for k in range(max_overlap, 0, -1):
-            if prev_words[-k:] == curr_words[:k]:
+            if prev_lc_words[-k:] == curr_lc_words[:k]:
                 return " ".join(curr_words[k:]).strip()
+
+        # If current is a complete rewrite that contains everything in previous
+        # plus new words at the end, detect via suffix scan.
+        if len(curr_lc_words) > len(prev_lc_words):
+            # Check if previous is a contiguous span anywhere in current
+            n = len(prev_lc_words)
+            for start in range(len(curr_lc_words) - n + 1):
+                if curr_lc_words[start:start + n] == prev_lc_words:
+                    suffix = curr_words[start + n:]
+                    if suffix:
+                        return " ".join(suffix).strip()
 
         # If no meaningful overlap exists, avoid emitting a likely rewrite.
         return ""

@@ -1,38 +1,84 @@
-# Default SOAP Note template — used when no specialty-specific template matches.
+# Verbatim SOAP Note template — preserves physician's exact words under section headings.
+# No paraphrasing or summarizing. The LLM organizes the transcript content into sections
+# but writes using the speaker's actual language as closely as possible.
+#
+# To revert to the original summarizing SOAP template:
+#   1. Rename this file → soap_verbatim.yaml
+#   2. Rename soap_default_old.yaml → soap_default.yaml
+#   3. In note_generation.yaml: rename soap: → verbatim: and soap_old: → soap:
 name: "Default SOAP Note"
 specialty: general
 visit_type: default
 
 header_fields:
   - patient_name
+  - date_of_birth
   - date_of_service
   - provider_name
-  - specialty
+  - location
 
 sections:
-  - id: subjective
-    label: "SUBJECTIVE"
+  - id: chief_complaint
+    label: "CHIEF COMPLAINT"
     required: true
-    prompt_hint: "Chief complaint, history of present illness, symptom onset and progression, aggravating/alleviating factors, prior treatment, current medications and allergies if mentioned"
+    prompt_hint: "One or two sentences — use the patient's or physician's exact words describing the reason for the visit"
 
-  - id: objective
-    label: "OBJECTIVE"
+  - id: history_of_present_illness
+    label: "HISTORY OF PRESENT ILLNESS"
     required: true
-    prompt_hint: "Vital signs if available, physical examination findings by body system"
+    prompt_hint: "Verbatim or near-verbatim account of onset, duration, location, quality, severity, timing, context, modifying factors, and associated symptoms as stated in the transcript — do NOT paraphrase or condense"
+
+  - id: past_medical_history
+    label: "PAST MEDICAL HISTORY"
+    required: true
+    prompt_hint: "Relevant prior medical conditions as stated verbatim; write 'Not discussed during this encounter' if not mentioned"
+
+  - id: past_surgical_history
+    label: "PAST SURGICAL HISTORY"
+    required: false
+    prompt_hint: "Prior surgical procedures as stated verbatim; omit this section entirely if not discussed"
+
+  - id: current_medications
+    label: "CURRENT MEDICATIONS"
+    required: true
+    prompt_hint: "Medication names, doses, and frequencies exactly as stated; write 'Not discussed during this encounter' if not mentioned"
+
+  - id: allergies
+    label: "ALLERGIES"
+    required: false
+    prompt_hint: "Drug or environmental allergies exactly as stated; write 'NKDA' if the physician states no known drug allergies; omit this section entirely if not discussed"
+
+  - id: review_of_systems
+    label: "REVIEW OF SYSTEMS"
+    required: false
+    prompt_hint: "Pertinent positives and negatives by system exactly as stated in the transcript; omit this section entirely if no ROS was discussed"
+
+  - id: physical_examination
+    label: "PHYSICAL EXAMINATION"
+    required: true
+    prompt_hint: "All examination findings exactly as dictated — inspection, palpation, range of motion, strength, special tests, neurological findings; preserve all measurements and grades verbatim; write 'Not documented' if not discussed"
+
+  - id: imaging_diagnostics
+    label: "IMAGING / DIAGNOSTICS"
+    required: false
+    prompt_hint: "Imaging or lab results reviewed or ordered, exactly as stated; omit this section entirely if no imaging or diagnostics were discussed"
 
   - id: assessment
     label: "ASSESSMENT"
     required: true
-    prompt_hint: "Numbered list of diagnoses or clinical impressions based on the encounter"
+    prompt_hint: "Diagnoses or clinical impressions exactly as stated by the physician — preserve the physician's exact diagnostic language and numbering if used"
 
   - id: plan
     label: "PLAN"
     required: true
-    prompt_hint: "Numbered treatment plan items corresponding to each assessment item: medications, procedures, referrals, follow-up"
+    prompt_hint: "Treatment plan items exactly as dictated — medications, procedures, referrals, therapy, work status, follow-up — preserve the physician's exact wording and numbering"
 
 formatting:
-  voice: active
-  tense: past
-  person: third
-  abbreviations: spell_out
-  measurements: include_units
+  # Verbatim mode: the prompt overrides most formatting rules.
+  # These fields are kept for compatibility but the verbatim prompt takes precedence.
+  voice: verbatim
+  tense: verbatim
+  person: verbatim
+  abbreviations: preserve
+  measurements: verbatim
+  verbatim_mode: true

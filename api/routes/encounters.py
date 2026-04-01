@@ -489,13 +489,13 @@ async def _proxy_pipeline_run(
     sample_id: str,
     audio_bytes: bytes,
     audio_filename: str,
-    note_audio_bytes: bytes | None,
-    note_audio_filename: str | None,
     mode: str,
     provider_id: str,
     visit_type: str,
     encounter_details: dict,
     output_dir: str,
+    note_audio_bytes: bytes | None = None,
+    note_audio_filename: str | None = None,
 ) -> None:
     """
     Proxy pipeline execution to the remote processing-pipeline server.
@@ -622,12 +622,12 @@ async def _run_pipeline_async(
     encounter_id: str,
     sample_id: str,
     audio_path: str,
-    note_audio_path: str | None,
     mode: str,
     provider_id: str,
     visit_type: str,
     output_dir: str,
     data_dir: str,
+    note_audio_path: str | None = None,
 ) -> None:
     """Run the encounter pipeline in the background, sending WebSocket events."""
     from api.ws.session_events import manager

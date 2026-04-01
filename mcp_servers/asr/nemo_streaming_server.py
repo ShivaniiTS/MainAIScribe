@@ -197,7 +197,7 @@ class NemoStreamingServer(ASREngine):
         expired = []
         with self._sessions_lock:
             for sid, session in self._sessions.items():
-                if now - session.last_activity > self.idle_timeout_s:
+                if now - session.last_activity >= self.idle_timeout_s:
                     expired.append(sid)
             for sid in expired:
                 del self._sessions[sid]

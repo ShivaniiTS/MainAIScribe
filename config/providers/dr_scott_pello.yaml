@@ -1,0 +1,19 @@
+id: dr_scott_pello
+name: Dr. Scott Pello
+credentials: ''
+specialty: general
+practice_id: ''
+note_format: SOAP
+noise_suppression_level: moderate
+postprocessor_mode: hybrid
+npi: ''
+asr_override: null
+llm_override: null
+correction_count: 0
+style_model_version: v0
+style_directives: []
+custom_vocabulary: []
+template_routing:
+  default: soap_default
+quality_scores: {}
+quality_history: []

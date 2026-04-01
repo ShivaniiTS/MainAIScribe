@@ -53,7 +53,7 @@ def _write_terms(path: Path, terms: list[str], specialty_id: str) -> None:
 
 
 def _discover_specialties() -> list[dict]:
-    """Discover all specialties from dictionary files."""
+    """Discover all specialties from dictionary files, plus built-in 'general'."""
     specs = []
     if DICT_DIR.exists():
         for f in sorted(DICT_DIR.glob("*.txt")):
@@ -67,6 +67,9 @@ def _discover_specialties() -> list[dict]:
                 "term_count": len(terms),
                 "has_dictionary": True,
             })
+    # Always include 'general' — used by soap_default template, no dictionary file needed
+    if not any(s["id"] == "general" for s in specs):
+        specs.insert(0, {"id": "general", "name": "General", "term_count": 0, "has_dictionary": False})
     return specs
 
 

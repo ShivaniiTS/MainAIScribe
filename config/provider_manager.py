@@ -291,7 +291,7 @@ class ProviderManager:
             id=data.get("id", "unknown"),
             name=data.get("name", ""),
             credentials=data.get("credentials"),
-            specialty=data.get("specialty", "general"),
+            specialty=data.get("specialty") or "general",
             npi=data.get("npi"),
             practice_id=data.get("practice_id"),
             note_format=note_format,

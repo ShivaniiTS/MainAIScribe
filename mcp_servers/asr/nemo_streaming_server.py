@@ -75,6 +75,40 @@ _SPOKEN_TEENS: dict[str, int] = {
     "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
 }
 
+# ── Cardinal number → digit conversion ───────────────────────────────────────
+# Used by _convert_medical_numbers.  Ordinals ("first", "second"…) are kept
+# separate in _SPOKEN_ORDINALS so they are NOT turned into standalone digits.
+
+_NUMBER_WORDS: dict[str, int] = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+    "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
+    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+    "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+    "hundred": 100,
+}
+
+# ALL-CAPS words that are common English function words mistakenly capitalised
+# by NeMo (e.g. "THE", "OF").  These are always safe to lowercase.
+_ALLCAPS_STOPWORDS: frozenset[str] = frozenset([
+    "THE", "A", "AN", "OF", "TO", "IN", "IS", "ARE", "WAS", "WERE",
+    "BE", "BEEN", "BEING", "AND", "OR", "BUT", "FOR", "WITH", "AT",
+    "BY", "FROM", "AS", "INTO", "ON", "OFF", "THAT", "THIS", "HER",
+    "HIS", "ITS", "SHE", "HE", "IT", "WE", "THEY", "HIM", "THEM",
+])
+
+# ── Optional wordninja import ─────────────────────────────────────────────────
+# wordninja splits merged English words using word-frequency statistics.
+# e.g. "historyOf" → "history Of"  /  "neck paintand" → "neck paint and"
+# Install with:  pip install wordninja
+# If not installed the feature is silently disabled (no error).
+try:
+    import wordninja as _wordninja
+    _WORDNINJA_AVAILABLE = True
+except ImportError:
+    _WORDNINJA_AVAILABLE = False
+
 
 @dataclass
 class StreamingSession:
@@ -364,6 +398,233 @@ class NemoStreamingServer(ASREngine):
 
     # ── Spoken date & text normalization ────────────────────────────────
 
+    # ── wordninja: split camelCase / merged-word tokens ──────────────────
+
+    def _split_merged_words(self, text: str) -> str:
+        """Split merged or camelCase tokens using wordninja.
+
+        Only applied to tokens that look merged — those containing an internal
+        uppercase letter (e.g. "historyOf", "THEContinues", "neck paintand").
+        Tokens that are:
+          • short (≤ 6 chars)
+          • pure ALL-CAPS known abbreviations (e.g. ASR, HTN, IV)
+          • present in the medical hotword map
+        are left untouched to protect medical terminology.
+
+        Silently returns original text when wordninja is not installed.
+        """
+        if not _WORDNINJA_AVAILABLE:
+            return text
+
+        # Tokens whose internal structure looks like two merged words:
+        # lowercase→Uppercase boundary ("historyOf") or ALL-CAPS→lower ("THEpatient")
+        _merged_re = re.compile(r'[a-z][A-Z]|[A-Z]{2,}[a-z]')
+
+        tokens = re.split(r'(\s+)', text)
+        result: list[str] = []
+        for token in tokens:
+            if re.match(r'^\s+$', token):
+                result.append(token)
+                continue
+
+            # Separate leading / trailing punctuation from the core word
+            m_lead = re.match(r'^([^\w]+)', token)
+            m_trail = re.search(r'([^\w]+)$', token)
+            lead = m_lead.group(1) if m_lead else ""
+            trail = m_trail.group(1) if m_trail else ""
+            core = token[len(lead): len(token) - len(trail) if trail else len(token)]
+
+            # Guard: short, all-uppercase abbreviation, in hotword map, no merge pattern
+            if (len(core) <= 6
+                    or core.isupper()
+                    or core.lower() in self._hotword_map
+                    or not _merged_re.search(core)):
+                result.append(token)
+                continue
+
+            parts = _wordninja.split(core)
+            if len(parts) > 1:
+                result.append(lead + " ".join(parts) + trail)
+            else:
+                result.append(token)
+
+        return "".join(result)
+
+    # ── ALL-CAPS function-word normalizer ────────────────────────────────
+
+    def _normalize_allcaps_stopwords(self, text: str) -> str:
+        """Lowercase ALL-CAPS common English function words that NeMo misraises.
+
+        NeMo sometimes capitalises entire tokens when its confidence is low
+        (e.g. "THE patient" → "THE patient" where "THE" should be "the").
+        This only lowercases tokens listed in _ALLCAPS_STOPWORDS; all other
+        ALL-CAPS tokens (abbreviations like HTN, IV, MRI) are preserved.
+        First token of the text is never lowercased so sentence start is kept.
+        """
+        words = text.split()
+        for idx, w in enumerate(words):
+            bare = w.rstrip(".,;:!?")  # strip trailing punctuation for comparison
+            if bare in _ALLCAPS_STOPWORDS:
+                if idx > 0:  # never lowercase very first word
+                    words[idx] = w.lower()
+        return " ".join(words)
+
+    # ── Cardinal number → digit conversion ──────────────────────────────
+
+    @staticmethod
+    def _parse_cardinal(words: list[str]) -> "tuple[int, int] | None":
+        """Parse a spoken cardinal number from the start of a word list.
+
+        Returns (integer_value, words_consumed) or None.
+        Handles 0–999.  Does NOT handle ordinals (first/second/…) — those
+        are kept in _SPOKEN_ORDINALS for date parsing.
+
+        Examples:
+            ["sixty", "five"] → (65, 2)
+            ["one", "hundred", "twenty", "three"] → (123, 4)
+            ["five", "by", "five"] → (5, 1)  # stops before "by"
+        """
+        if not words:
+            return None
+        w = words[0].lower().rstrip(".,;:!?-")
+        if w not in _NUMBER_WORDS:
+            return None
+
+        val = _NUMBER_WORDS[w]
+        consumed = 1
+
+        # "N hundred [rest]"
+        if (consumed < len(words)
+                and words[consumed].lower().rstrip(".,;:!?-") == "hundred"
+                and 1 <= val <= 9):
+            hundreds = val * 100
+            consumed += 1
+            # Optional "and" after hundred
+            if consumed < len(words) and words[consumed].lower() == "and":
+                consumed += 1
+            # Try to parse tens+ones (0–99) after "hundred"
+            if consumed < len(words):
+                w2 = words[consumed].lower().rstrip(".,;:!?-")
+                if w2 in _NUMBER_WORDS:
+                    v2 = _NUMBER_WORDS[w2]
+                    sub = 1
+                    if v2 >= 20 and consumed + 1 < len(words):
+                        w3 = words[consumed + 1].lower().rstrip(".,;:!?-")
+                        if w3 in _NUMBER_WORDS and 1 <= _NUMBER_WORDS[w3] <= 9:
+                            return (hundreds + v2 + _NUMBER_WORDS[w3], consumed + 2)
+                    return (hundreds + v2, consumed + 1)
+            return (hundreds, consumed)
+
+        # Century-year pattern: "twenty twenty six" → 2026, "nineteen ninety five" → 1995
+        # Only fires when val is 19 or 20 and the remainder forms a 2-digit (10–99) number
+        # yielding a plausible year (1900–2100). This avoids converting "twenty five" → 2005.
+        if val in (19, 20):
+            sub = NemoStreamingServer._parse_cardinal(words[consumed:])
+            if sub is not None and 10 <= sub[0] <= 99:
+                year_cand = val * 100 + sub[0]
+                if 1900 <= year_cand <= 2100:
+                    return (year_cand, consumed + sub[1])
+
+        # Tens + optional ones: "twenty five" → 25
+        if val >= 20 and consumed < len(words):
+            w2 = words[consumed].lower().rstrip(".,;:!?-")
+            if w2 in _NUMBER_WORDS and 1 <= _NUMBER_WORDS[w2] <= 9:
+                return (val + _NUMBER_WORDS[w2], 2)
+
+        return (val, consumed)
+
+    def _convert_medical_numbers(self, text: str) -> str:
+        """Convert spoken number words to digits with medical-specific patterns.
+
+        Priority patterns (checked before generic digit replacement):
+          1. "five out of five" / "five by five" / "five slash five" → "5/5"
+             (covers strength grading, recall scoring)
+          2. "two plus" / "one plus" → "2+" / "1+"
+             (deep-tendon reflex grading)
+          3. "twenty seven year old" → "27-year-old"
+             (demographic age)
+          4. All remaining number words → digits
+             "sixty five" → "65",  "three hundred mg" → "300 mg"
+        """
+        words = text.split()
+        result: list[str] = []
+        i = 0
+        while i < len(words):
+            num_result = self._parse_cardinal(words[i:])
+            if num_result is None:
+                result.append(words[i])
+                i += 1
+                continue
+
+            num_val, num_consumed = num_result
+            j = i + num_consumed          # index of first word AFTER the number
+            remaining = words[j:]
+
+            def _trail(word: str) -> str:
+                m = re.search(r'[^\w]+$', word)
+                return m.group() if m else ""
+
+            # ── Pattern 1: X out of Y / X by Y / X slash Y → "X/Y" ──────
+            if remaining:
+                r0 = remaining[0].lower().rstrip(".,;:")
+                if r0 in ("out", "by", "/", "slash"):
+                    skip = 2 if (r0 == "out"
+                                 and len(remaining) > 1
+                                 and remaining[1].lower() == "of") else 1
+                    y_words = remaining[skip:]
+                    y_result = self._parse_cardinal(y_words)
+                    if y_result:
+                        y_val, y_consumed = y_result
+                        trail_str = _trail(y_words[y_consumed - 1])
+                        result.append(f"{num_val}/{y_val}{trail_str}")
+                        i = j + skip + y_consumed
+                        continue
+
+            # ── Pattern 2: X plus → "X+" ─────────────────────────────────
+            if remaining and remaining[0].lower().rstrip(".,;:") == "plus":
+                result.append(f"{num_val}+{_trail(remaining[0])}")
+                i = j + 1
+                continue
+
+            # ── Pattern 3: X year old → "X-year-old" ────────────────────
+            if len(remaining) >= 2:
+                r0 = remaining[0].lower()
+                r1 = remaining[1].lower().rstrip(".,;:")
+                if r0 == "year" and r1 == "old":
+                    result.append(f"{num_val}-year-old{_trail(remaining[1])}")
+                    i = j + 2
+                    continue
+
+            # ── General: number word(s) → digit ──────────────────────────
+            trail_str = _trail(words[j - 1])
+            result.append(f"{num_val}{trail_str}")
+            i = j
+
+        return " ".join(result)
+
+    def _normalize_numeric_date(self, text: str) -> str:
+        """Convert "DD M YYYY" sequences (after digit conversion) to "DD/M/YYYY".
+
+        After _convert_medical_numbers runs, a spoken date like
+        "twenty four two twenty twenty six" becomes "24 2 2026".
+        This final step detects that three-number sequence and formats it as
+        "24/2/2026" (preserving the day/month/year order the speaker used).
+
+        Only fires when:
+          • d1 ∈ 1–31  (plausible day)
+          • d2 ∈ 1–12  (plausible month)
+          • year ∈ 1900–2100
+        """
+        def _replace(m: re.Match) -> str:
+            d1, d2, yr = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if 1 <= d1 <= 31 and 1 <= d2 <= 12 and 1900 <= yr <= 2100:
+                return f"{d1}/{d2}/{yr}"
+            return m.group(0)
+
+        return re.sub(r'\b(\d{1,2})\s+(\d{1,2})\s+(\d{4})\b', _replace, text)
+
+    # ── Ordinal-day parser (for spoken-date normalizer) ──────────────────
+
     @staticmethod
     def _parse_ordinal_day(words: list[str]) -> "tuple[int, int] | None":
         """Parse spoken ordinal day from a word list.
@@ -471,15 +732,24 @@ class NemoStreamingServer(ASREngine):
     def _normalize_segment_text(self, text: str) -> str:
         """Final normalization pass on a transcribed segment.
 
-        1. Spoken-date conversion ("october twenty fifth…" → "October 25,…")
-        2. Collapse any double-spaces introduced by post-processing steps.
-        NeMo word-merging (e.g. "thepatient") is a model-level behaviour that
-        cannot be reliably fixed in post-processing; the 3-second window setting
-        substantially reduces its frequency.
+        Pipeline (in order):
+          1. wordninja: split merged/camelCase tokens ("historyOf" → "history Of")
+          2. ALL-CAPS stopwords: lowercase NeMo-raised function words ("THE" → "the")
+          3. Number words → digits: "twenty seven year old" → "27-year-old"
+          4. Spoken-date conversion: "october twenty fifth twenty twenty four" → "October 25, 2024"
+          5. Numeric-date formatting: "24 2 2026" → "24/2/2026"
+          6. Collapse double-spaces.
+
+        Note: comma/period punctuation requires an LLM (or a dedicated punctuation
+        restoration model) — that is handled by the downstream note-generation pass.
         """
         if not text:
             return text
-        text = self._normalize_spoken_dates(text)
+        text = self._split_merged_words(text)
+        text = self._normalize_allcaps_stopwords(text)
+        text = self._normalize_spoken_dates(text)       # dates first (before numbers corrupt them)
+        text = self._convert_medical_numbers(text)
+        text = self._normalize_numeric_date(text)
         text = re.sub(r" {2,}", " ", text).strip()
         return text
 

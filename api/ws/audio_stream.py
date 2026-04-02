@@ -226,6 +226,28 @@ async def asr_stream(
         diarize=(mode == "ambient"),
     )
 
+    # Inject patient and provider names as hotwords so they are always spelled
+    # correctly regardless of NeMo's casing output.
+    # get_patient_context is best-effort — a missing encounter silently skips.
+    try:
+        from api.data_loader import get_patient_context
+        ctx = get_patient_context(encounter_id)
+        if ctx:
+            patient_name: str = (ctx.get("patient") or {}).get("name") or ""
+            provider_name: str = (ctx.get("provider") or {}).get("name") or ""
+            for name in (patient_name, provider_name):
+                name = name.strip()
+                if not name:
+                    continue
+                asr_config.hotwords.append(name)
+                # Also add just the last name (first space-delimited final token)
+                # so "Pello" alone is corrected even without the full "Scott J. Pello"
+                parts = name.split()
+                if len(parts) > 1:
+                    asr_config.hotwords.append(parts[-1])
+    except Exception:
+        pass  # name injection is best-effort; never fail the session
+
     _active_sessions[session_id] = {
         "encounter_id": encounter_id,
         "mode": mode,

@@ -36,6 +36,45 @@ from mcp_servers.asr.base import (
 
 logger = logging.getLogger(__name__)
 
+# ── Spoken date normalization ─────────────────────────────────────────────────
+# NeMo transcribes spoken dates as lowercase words.  These tables let us convert
+# e.g. "october twenty fifth twenty twenty four" → "October 25, 2024".
+
+_SPOKEN_MONTHS: dict[str, str] = {
+    "january": "January", "february": "February", "march": "March",
+    "april": "April", "may": "May", "june": "June",
+    "july": "July", "august": "August", "september": "September",
+    "october": "October", "november": "November", "december": "December",
+}
+
+# Simple one-word ordinals (e.g. "fifteenth" → 15)
+_SPOKEN_ORDINALS: dict[str, int] = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+    "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10,
+    "eleventh": 11, "twelfth": 12, "thirteenth": 13, "fourteenth": 14,
+    "fifteenth": 15, "sixteenth": 16, "seventeenth": 17, "eighteenth": 18,
+    "nineteenth": 19, "twentieth": 20, "thirtieth": 30,
+}
+
+# Ordinal suffix words used in compound ordinals ("twenty FIRST", "thirty FIRST")
+_ORDINAL_ONES: dict[str, int] = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+    "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9,
+}
+
+_SPOKEN_TENS: dict[str, int] = {
+    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+    "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+}
+_SPOKEN_ONES: dict[str, int] = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9,
+}
+_SPOKEN_TEENS: dict[str, int] = {
+    "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
+}
+
 
 @dataclass
 class StreamingSession:
@@ -323,6 +362,127 @@ class NemoStreamingServer(ASREngine):
             logger.info("nemo_streaming: expired %d idle sessions", len(expired))
         return len(expired)
 
+    # ── Spoken date & text normalization ────────────────────────────────
+
+    @staticmethod
+    def _parse_ordinal_day(words: list[str]) -> "tuple[int, int] | None":
+        """Parse spoken ordinal day from a word list.
+
+        Returns (day_number, words_consumed) or None.
+        Examples: ["fifteenth"] → (15, 1)
+                  ["twenty", "fifth"] → (25, 2)
+        """
+        if not words:
+            return None
+        w = words[0]
+        # Simple one-word ordinals: "first", "fifteenth", "twentieth", etc.
+        if w in _SPOKEN_ORDINALS:
+            return (_SPOKEN_ORDINALS[w], 1)
+        # Compound two-word ordinals: "twenty first", "thirty first", etc.
+        if w in _SPOKEN_TENS and len(words) >= 2 and words[1] in _ORDINAL_ONES:
+            return (_SPOKEN_TENS[w] + _ORDINAL_ONES[words[1]], 2)
+        return None
+
+    @staticmethod
+    def _parse_spoken_year(words: list[str]) -> "tuple[int, int] | None":
+        """Parse spoken year from a word list.
+
+        Returns (year, words_consumed) or None.
+        Examples: ["twenty", "twenty", "four"] → (2024, 3)
+                  ["nineteen", "eighty", "five"] → (1985, 3)
+                  ["twenty", "twenty"] → (2020, 2)
+        """
+        if not words:
+            return None
+        w = words[0]
+        # Century word must be teens (nineteen) or tens (twenty, thirty, …)
+        if w in _SPOKEN_TEENS:
+            century = _SPOKEN_TEENS[w] * 100
+        elif w in _SPOKEN_TENS:
+            century = _SPOKEN_TENS[w] * 100
+        else:
+            return None
+
+        remaining = words[1:]
+        if not remaining:
+            return None  # bare "twenty" alone is not a year
+
+        r0 = remaining[0]
+        # Teens: "twenty sixteen" → 2016
+        if r0 in _SPOKEN_TEENS:
+            return (century + _SPOKEN_TEENS[r0], 2)
+        # Tens (+optional ones): "twenty twenty" → 2020, "twenty twenty four" → 2024
+        if r0 in _SPOKEN_TENS:
+            yy = _SPOKEN_TENS[r0]
+            if len(remaining) >= 2 and remaining[1] in _SPOKEN_ONES:
+                return (century + yy + _SPOKEN_ONES[remaining[1]], 3)
+            return (century + yy, 2)
+        # Single ones: "twenty four" → 2004 (unusual but valid)
+        if r0 in _SPOKEN_ONES:
+            return (century + _SPOKEN_ONES[r0], 2)
+        return None
+
+    def _normalize_spoken_dates(self, text: str) -> str:
+        """Convert spoken date patterns in text to written date format.
+
+        Examples:
+            "october twenty fifth twenty twenty four"  → "October 25, 2024"
+            "january fifteenth twenty twenty six"      → "January 15, 2026"
+            "february second twenty twenty six"        → "February 2, 2026"
+        Month-only or month+day (no year) are also handled gracefully.
+        """
+        words = text.split()
+        result: list[str] = []
+        i = 0
+        while i < len(words):
+            # Strip trailing punctuation for month detection; preserve it
+            raw_word = words[i]
+            w_lower = raw_word.lower().rstrip(",.")
+            trailing = raw_word[len(w_lower):]  # the stripped punctuation, if any
+
+            if w_lower not in _SPOKEN_MONTHS:
+                result.append(raw_word)
+                i += 1
+                continue
+
+            month_str = _SPOKEN_MONTHS[w_lower]
+            remaining = [ww.lower().rstrip(",.") for ww in words[i + 1:]]
+
+            day_result = self._parse_ordinal_day(remaining)
+            if day_result is None:
+                # Not followed by an ordinal day — keep as-is
+                result.append(raw_word)
+                i += 1
+                continue
+
+            day, day_consumed = day_result
+            year_result = self._parse_spoken_year(remaining[day_consumed:])
+
+            if year_result:
+                year, year_consumed = year_result
+                result.append(f"{month_str} {day}, {year}{trailing}")
+                i += 1 + day_consumed + year_consumed
+            else:
+                result.append(f"{month_str} {day}{trailing}")
+                i += 1 + day_consumed
+
+        return " ".join(result)
+
+    def _normalize_segment_text(self, text: str) -> str:
+        """Final normalization pass on a transcribed segment.
+
+        1. Spoken-date conversion ("october twenty fifth…" → "October 25,…")
+        2. Collapse any double-spaces introduced by post-processing steps.
+        NeMo word-merging (e.g. "thepatient") is a model-level behaviour that
+        cannot be reliably fixed in post-processing; the 3-second window setting
+        substantially reduces its frequency.
+        """
+        if not text:
+            return text
+        text = self._normalize_spoken_dates(text)
+        text = re.sub(r" {2,}", " ", text).strip()
+        return text
+
     # ── Streaming transcription ──────────────────────────────────────────
 
     # STREAM_WINDOW_S is now set as an instance variable in __init__.
@@ -389,6 +549,9 @@ class NemoStreamingServer(ASREngine):
             # Apply medical hotword corrections
             extra_hw = (config.hotwords if config is not None else None) or None
             text = self._apply_hotword_corrections(text, extra_hotwords=extra_hw)
+
+            # Normalize spacing and convert spoken dates to written form
+            text = self._normalize_segment_text(text)
 
             if text:
                 partial = PartialTranscript(

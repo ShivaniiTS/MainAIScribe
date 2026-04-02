@@ -655,3 +655,131 @@ class TestNemoStreamWindowConfig:
         )
         assert "radiculitis" in result
         assert "postconcussive syndrome" in result
+
+
+# ── spoken date normalisation ─────────────────────────────────────────────────
+
+class TestSpokenDateNormalization:
+    """Tests for _normalize_spoken_dates and _normalize_segment_text."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer(device="cpu")
+
+    # ── date conversion ──────────────────────────────────────────────────
+
+    def test_full_date_october(self):
+        result = self._server()._normalize_spoken_dates(
+            "october twenty fifth twenty twenty four"
+        )
+        assert result == "October 25, 2024"
+
+    def test_full_date_january(self):
+        result = self._server()._normalize_spoken_dates(
+            "january fifteenth twenty twenty six"
+        )
+        assert result == "January 15, 2026"
+
+    def test_full_date_february(self):
+        result = self._server()._normalize_spoken_dates(
+            "february second twenty twenty six"
+        )
+        assert result == "February 2, 2026"
+
+    def test_full_date_november_first(self):
+        result = self._server()._normalize_spoken_dates(
+            "november twenty first twenty twenty four"
+        )
+        assert result == "November 21, 2024"
+
+    def test_full_date_july_eighth(self):
+        result = self._server()._normalize_spoken_dates(
+            "july eighth twenty twenty four"
+        )
+        assert result == "July 8, 2024"
+
+    def test_date_embedded_in_sentence(self):
+        result = self._server()._normalize_spoken_dates(
+            "the accident occurred on october twenty fifth twenty twenty four"
+        )
+        assert "October 25, 2024" in result
+        assert "the accident occurred on" in result
+
+    def test_multiple_dates_in_sentence(self):
+        result = self._server()._normalize_spoken_dates(
+            "injury on october twenty fifth twenty twenty four "
+            "follow up january fifteenth twenty twenty six"
+        )
+        assert "October 25, 2024" in result
+        assert "January 15, 2026" in result
+
+    def test_no_date_unchanged(self):
+        text = "the patient has hypertension and diabetes mellitus"
+        result = self._server()._normalize_spoken_dates(text)
+        assert result == text
+
+    def test_month_without_day_unchanged(self):
+        """Month word not followed by an ordinal → kept as-is."""
+        text = "in january the patient reported pain"
+        result = self._server()._normalize_spoken_dates(text)
+        assert result == text
+
+    def test_date_with_trailing_comma(self):
+        """Trailing comma on month word is preserved in output."""
+        result = self._server()._normalize_spoken_dates(
+            "starting january, fifteenth twenty twenty six"
+        )
+        # The comma is stripped for month detection but must not corrupt output
+        assert "January" in result
+        assert "15" in result
+
+    def test_nineteen_century_year(self):
+        result = self._server()._normalize_spoken_dates(
+            "born on march third nineteen eighty five"
+        )
+        assert "March 3, 1985" in result
+
+    # ── normalize_segment_text ───────────────────────────────────────────
+
+    def test_segment_text_collapses_double_spaces(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu")
+        assert server._normalize_segment_text("hello  world") == "hello world"
+
+    def test_segment_text_strips(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu")
+        assert server._normalize_segment_text("  hi  ") == "hi"
+
+    def test_segment_text_converts_date(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu")
+        result = server._normalize_segment_text(
+            "injury on october twenty fifth twenty twenty four"
+        )
+        assert "October 25, 2024" in result
+
+    # ── name injection (hotword path) ────────────────────────────────────
+
+    def test_patient_name_hotword_corrects_casing(self):
+        """If patient/provider name is injected as a hotword, casing is fixed."""
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        from mcp_servers.asr.base import ASRConfig
+        server = NemoStreamingServer(device="cpu")
+        config = ASRConfig(hotwords=["Brianna Buckley", "Scott Pello"])
+        result = server._apply_hotword_corrections(
+            "patient brianna buckley seen by scott pello",
+            extra_hotwords=config.hotwords,
+        )
+        assert "Brianna Buckley" in result
+        assert "Scott Pello" in result
+
+    def test_last_name_only_hotword(self):
+        """Injecting just the last name e.g. 'Pello' also corrects casing."""
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu")
+        result = server._apply_hotword_corrections(
+            "dr pello evaluated the patient",
+            extra_hotwords=["Pello"],
+        )
+        assert "Pello" in result

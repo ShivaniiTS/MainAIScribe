@@ -114,9 +114,20 @@ class NemoStreamingServer(ASREngine):
     # ── Hotword correction ───────────────────────────────────────────────
 
     def _build_hotword_map(self, hotwords: list[str], hotwords_files: list[str]) -> None:
-        """Build the lowercase→correct-form lookup from inline terms and dictionary files."""
-        terms: list[str] = list(hotwords)
+        """Build the lowercase→correct-form lookup from inline terms and dictionary files.
 
+        Inline hotwords are loaded with no length restriction (so 2-char medical
+        abbreviations like DM, IV, BP work). Terms loaded from *files* skip anything
+        ≤2 chars to prevent false-positive corrections from the 98K wordlist.
+        """
+        # Load inline hotwords first — no length restriction.
+        for term in hotwords:
+            key = term.lower().strip()
+            if key:
+                self._hotword_map[key] = term.strip()
+
+        # Load file terms — skip very short (≤2 chars) to avoid false positives
+        # from generic entries in the 98K OpenMedSpel wordlist ("aa", "ab", etc.).
         for path in hotwords_files:
             if not os.path.isabs(path):
                 # Resolve relative to project root (two levels up from this file)
@@ -125,16 +136,15 @@ class NemoStreamingServer(ASREngine):
             try:
                 with open(path, encoding="utf-8") as fh:
                     for line in fh:
-                        line = line.strip()
-                        if line and not line.startswith("#"):
-                            terms.append(line)
+                        term = line.strip()
+                        if not term or term.startswith("#"):
+                            continue
+                        key = term.lower()
+                        # Skip ≤2-char entries from files only
+                        if len(key) > 2:
+                            self._hotword_map[key] = term
             except OSError as exc:
                 logger.warning("nemo_streaming: could not load hotwords file %s — %s", path, exc)
-
-        for term in terms:
-            key = term.lower().strip()
-            if key:
-                self._hotword_map[key] = term.strip()
 
         if self._hotword_map:
             logger.info("nemo_streaming: loaded %d hotword entries", len(self._hotword_map))
@@ -364,8 +374,13 @@ class NemoStreamingServer(ASREngine):
             text = result.get("text", "").strip()
             confidence = result.get("confidence", 0.9)
 
+            # Strip trailing sentence-final punctuation NeMo adds to every short
+            # window — full punctuation is rebuilt by the LLM cleanup pass.
+            text = re.sub(r'[.!?]+$', '', text).strip()
+
             # Apply medical hotword corrections
-            text = self._apply_hotword_corrections(text, extra_hotwords=config.hotwords or None)
+            extra_hw = (config.hotwords if config is not None else None) or None
+            text = self._apply_hotword_corrections(text, extra_hotwords=extra_hw)
 
             if text:
                 partial = PartialTranscript(
@@ -519,7 +534,7 @@ class NemoStreamingServer(ASREngine):
             batch=True,
             diarization=False,
             word_alignment=False,
-            medical_vocab=False,
+            medical_vocab=True,   # hotword correction is active
             max_speakers=1,
             supported_formats=["pcm", "wav"],
         )

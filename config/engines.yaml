@@ -106,6 +106,11 @@ asr:
       # Add specialty-specific files or inline terms as needed.
       # Per-provider/per-request hotwords are also accepted via ASRConfig.hotwords.
       hotwords_files:
+        # 98K OpenMedSpel medical dictionary — loaded first so specialty files
+        # can override casing for terms that appear in both. Short (≤2 char)
+        # entries are skipped automatically to prevent false-positive corrections.
+        - "postprocessor/medical_wordlist.txt"
+        # Specialty dictionaries (fewer terms but higher curation; override 98k)
         - "config/dictionaries/cardiology.txt"
         - "config/dictionaries/neurology.txt"
         - "config/dictionaries/orthopedic.txt"

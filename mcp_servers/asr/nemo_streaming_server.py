@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import re
 import time
 import threading
 from collections import defaultdict
@@ -71,6 +73,8 @@ class NemoStreamingServer(ASREngine):
         device: str = "cuda",
         chunk_size_ms: int = 160,
         idle_timeout_s: int = 300,
+        hotwords: list[str] | None = None,
+        hotwords_files: list[str] | None = None,
     ):
         self.model_name = model_name
         self.device = device
@@ -91,6 +95,10 @@ class NemoStreamingServer(ASREngine):
         self._sessions: dict[str, StreamingSession] = {}
         self._sessions_lock = threading.Lock()
 
+        # Medical hotword correction map: lowercase phrase → correct form
+        self._hotword_map: dict[str, str] = {}
+        self._build_hotword_map(hotwords or [], hotwords_files or [])
+
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "NemoStreamingServer":
         """Instantiate from engines.yaml config dict."""
@@ -99,7 +107,100 @@ class NemoStreamingServer(ASREngine):
             device=config.get("device", "cuda"),
             chunk_size_ms=config.get("chunk_size_ms", 160),
             idle_timeout_s=config.get("idle_unload_seconds", 300),
+            hotwords=config.get("hotwords", []),
+            hotwords_files=config.get("hotwords_files", []),
         )
+
+    # ── Hotword correction ───────────────────────────────────────────────
+
+    def _build_hotword_map(self, hotwords: list[str], hotwords_files: list[str]) -> None:
+        """Build the lowercase→correct-form lookup from inline terms and dictionary files."""
+        terms: list[str] = list(hotwords)
+
+        for path in hotwords_files:
+            if not os.path.isabs(path):
+                # Resolve relative to project root (two levels up from this file)
+                base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                path = os.path.join(base, path)
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            terms.append(line)
+            except OSError as exc:
+                logger.warning("nemo_streaming: could not load hotwords file %s — %s", path, exc)
+
+        for term in terms:
+            key = term.lower().strip()
+            if key:
+                self._hotword_map[key] = term.strip()
+
+        if self._hotword_map:
+            logger.info("nemo_streaming: loaded %d hotword entries", len(self._hotword_map))
+
+    def reload_hotwords(self, hotwords: list[str], hotwords_files: list[str]) -> None:
+        """Replace the hotword map at runtime (e.g. after provider switch)."""
+        self._hotword_map.clear()
+        self._build_hotword_map(hotwords, hotwords_files)
+
+    def _apply_hotword_corrections(self, text: str, extra_hotwords: list[str] | None = None) -> str:
+        """Post-process transcribed text to fix medical term casing/spelling.
+
+        Longest-match-first scan: tries up to 5-word phrases, falls back
+        to shorter spans so 'coronary artery disease' beats 'coronary' alone.
+        Case-insensitive matching; original casing from the dictionary is restored.
+        """
+        if not text:
+            return text
+
+        # Merge in any per-request hotwords (e.g. from ASRConfig.hotwords)
+        active_map = self._hotword_map
+        if extra_hotwords:
+            active_map = dict(self._hotword_map)
+            for term in extra_hotwords:
+                key = term.lower().strip()
+                if key:
+                    active_map[key] = term.strip()
+
+        if not active_map:
+            return text
+
+        # Tokenise preserving punctuation attached to words
+        tokens = re.split(r'(\s+)', text)  # odd indices = whitespace, even = words
+        words = [t for t in tokens if not re.match(r'^\s+$', t)]
+        spaces = [t for t in tokens if re.match(r'^\s+$', t)]
+
+        max_phrase_len = 5
+        result: list[str] = []
+        i = 0
+        while i < len(words):
+            matched = False
+            for length in range(min(max_phrase_len, len(words) - i), 0, -1):
+                phrase_raw = " ".join(words[i:i + length])
+                # Strip trailing punctuation for the lookup key only
+                phrase_key = re.sub(r'[^\w\s]$', '', phrase_raw).lower()
+                if phrase_key in active_map:
+                    # Preserve any trailing punctuation that was on the last token
+                    trailing = re.search(r'[^\w]$', words[i + length - 1])
+                    corrected = active_map[phrase_key]
+                    if trailing:
+                        corrected += trailing.group()
+                    result.append(corrected)
+                    i += length
+                    matched = True
+                    break
+            if not matched:
+                result.append(words[i])
+                i += 1
+
+        # Re-interleave the original whitespace
+        out_tokens: list[str] = []
+        for idx, word in enumerate(result):
+            out_tokens.append(word)
+            if idx < len(spaces):
+                out_tokens.append(spaces[idx])
+        return "".join(out_tokens)
 
     @property
     def name(self) -> str:
@@ -195,7 +296,7 @@ class NemoStreamingServer(ASREngine):
         expired = []
         with self._sessions_lock:
             for sid, session in self._sessions.items():
-                if now - session.last_activity > self.idle_timeout_s:
+                if now - session.last_activity >= self.idle_timeout_s:
                     expired.append(sid)
             for sid in expired:
                 del self._sessions[sid]
@@ -262,6 +363,9 @@ class NemoStreamingServer(ASREngine):
         if result:
             text = result.get("text", "").strip()
             confidence = result.get("confidence", 0.9)
+
+            # Apply medical hotword corrections
+            text = self._apply_hotword_corrections(text, extra_hotwords=config.hotwords or None)
 
             if text:
                 partial = PartialTranscript(

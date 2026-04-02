@@ -99,6 +99,56 @@ asr:
       chunk_size_ms: 160               # 80ms lookahead (good latency/accuracy balance)
       idle_unload_seconds: 300         # Unload model after 5 min idle
 
+      # ── Medical hotword correction ──────────────────────────────────────
+      # Post-transcription text correction for medical terms NeMo mis-hears.
+      # All dictionary files are loaded at server start; correction is applied
+      # to every transcript window via longest-match-first phrase scanning.
+      # Add specialty-specific files or inline terms as needed.
+      # Per-provider/per-request hotwords are also accepted via ASRConfig.hotwords.
+      hotwords_files:
+        - "config/dictionaries/cardiology.txt"
+        - "config/dictionaries/neurology.txt"
+        - "config/dictionaries/orthopedic.txt"
+        - "config/dictionaries/gastroenterology.txt"
+        - "config/dictionaries/chiropractic.txt"
+
+      # Inline hotwords (supplement the dictionary files above).
+      # Good for universal abbreviations and drug names not in any specialty file.
+      hotwords:
+        - "HEENT"
+        - "CVS"
+        - "GI"
+        - "GU"
+        - "MSK"
+        - "CNS"
+        - "SOB"
+        - "DOE"
+        - "HTN"
+        - "DM"
+        - "HLD"
+        - "CKD"
+        - "BID"
+        - "TID"
+        - "QID"
+        - "PRN"
+        - "PO"
+        - "IV"
+        - "IM"
+        - "SQ"
+        - "NPO"
+        - "CBC"
+        - "BMP"
+        - "CMP"
+        - "LFTs"
+        - "TSH"
+        - "HbA1c"
+        - "eGFR"
+        - "EKG"
+        - "ECG"
+        - "CT"
+        - "MRI"
+        - "X-ray"
+
     nemo_multitalker:                   # Real-time multi-speaker streaming
       type: nemo_multitalker
       model: "nvidia/multitalker-parakeet-streaming-0.6b-v1"

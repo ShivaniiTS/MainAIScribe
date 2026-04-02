@@ -7,6 +7,8 @@ Tests:
   - NemoMultitalkerServer speaker labeling
   - Streaming transcript integration with transcribe node
   - Audio streaming WebSocket endpoint contract
+  - Hotword correction, medical vocab, 98k wordlist, pain_medicine dict
+  - stream_window_s configurable latency/quality tradeoff
 """
 from __future__ import annotations
 
@@ -545,3 +547,111 @@ class TestNemoHotwordCorrection:
         assert "htn" in server._hotword_map
         assert server._hotword_map["htn"] == "HTN"
         assert "sob" in server._hotword_map
+
+
+# ── stream_window_s configurable latency/quality ──────────────────────
+
+class TestNemoStreamWindowConfig:
+    """Tests for configurable stream_window_s parameter and pain_medicine dict."""
+
+    def test_default_stream_window_is_3s(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu")
+        assert server.STREAM_WINDOW_S == 3.0
+
+    def test_custom_stream_window_respected(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu", stream_window_s=5.0)
+        assert server.STREAM_WINDOW_S == 5.0
+
+    def test_from_config_reads_stream_window_s(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer.from_config({
+            "device": "cpu",
+            "stream_window_s": 2.0,
+        })
+        assert server.STREAM_WINDOW_S == 2.0
+
+    def test_from_config_defaults_to_3s(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer.from_config({"device": "cpu"})
+        assert server.STREAM_WINDOW_S == 3.0
+
+    def test_stream_window_1s_yields_partials_on_short_audio(self):
+        """1s window triggers decode sooner: ~1.28s audio => at least 1 partial."""
+        import asyncio
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        from mcp_servers.asr.base import ASRConfig
+        server = NemoStreamingServer(device="cpu", chunk_size_ms=160, stream_window_s=1.0)
+        server._loaded = True
+        server._model = None
+        pcm = b"\x00\x00" * server.chunk_samples * 8  # ~1.28 s
+        partials = []
+
+        async def collect():
+            async for p in server.transcribe_stream(pcm, "fast-test", config=ASRConfig()):
+                partials.append(p)
+
+        asyncio.run(collect())
+        assert len(partials) > 0, "1s window should yield a partial within ~1.28s of audio"
+
+    def test_stream_window_5s_no_partial_on_short_audio(self):
+        """5s window must NOT decode on only ~3.2s of audio."""
+        import asyncio
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        from mcp_servers.asr.base import ASRConfig
+        server = NemoStreamingServer(device="cpu", chunk_size_ms=160, stream_window_s=5.0)
+        server._loaded = True
+        server._model = None
+        pcm = b"\x00\x00" * server.chunk_samples * 20  # ~3.2 s
+        partials = []
+
+        async def collect():
+            async for p in server.transcribe_stream(pcm, "slow-test", config=ASRConfig()):
+                partials.append(p)
+
+        asyncio.run(collect())
+        assert len(partials) == 0, "5s window must not decode on only ~3.2s of audio"
+
+    def test_multitalker_from_config_stream_window(self):
+        from mcp_servers.asr.nemo_multitalker_server import NemoMultitalkerServer
+        server = NemoMultitalkerServer.from_config({
+            "device": "cpu",
+            "stream_window_s": 4.0,
+        })
+        assert server.STREAM_WINDOW_S == 4.0
+
+    def test_multitalker_default_stream_window_is_3s(self):
+        from mcp_servers.asr.nemo_multitalker_server import NemoMultitalkerServer
+        server = NemoMultitalkerServer(device="cpu")
+        assert server.STREAM_WINDOW_S == 3.0
+
+    def test_pain_medicine_dict_loaded(self):
+        """pain_medicine.txt terms must appear in the hotword map."""
+        import os
+        path = "config/dictionaries/pain_medicine.txt"
+        if not os.path.exists(path):
+            pytest.skip("pain_medicine.txt not found")
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu", hotwords_files=[path])
+        assert "radiculitis" in server._hotword_map
+        assert "postconcussive syndrome" in server._hotword_map
+        assert "neurofibromatosis" in server._hotword_map
+        assert "trigger point injection" in server._hotword_map
+        assert "epidural steroid injection" in server._hotword_map
+        assert "ubrelvy" in server._hotword_map
+        assert "qulipta" in server._hotword_map
+
+    def test_pain_medicine_corrections_applied(self):
+        """Key Dr. Pello terms are corrected when present in text."""
+        import os
+        path = "config/dictionaries/pain_medicine.txt"
+        if not os.path.exists(path):
+            pytest.skip("pain_medicine.txt not found")
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        server = NemoStreamingServer(device="cpu", hotwords_files=[path])
+        result = server._apply_hotword_corrections(
+            "patient has radiculitis and postconcussive syndrome"
+        )
+        assert "radiculitis" in result
+        assert "postconcussive syndrome" in result

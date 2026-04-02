@@ -75,11 +75,19 @@ class NemoStreamingServer(ASREngine):
         idle_timeout_s: int = 300,
         hotwords: list[str] | None = None,
         hotwords_files: list[str] | None = None,
+        stream_window_s: float = 3.0,
     ):
         self.model_name = model_name
         self.device = device
         self.chunk_size_ms = chunk_size_ms
         self.idle_timeout_s = idle_timeout_s
+        # How many seconds of NEW audio to accumulate before triggering a decode.
+        # Higher = better accuracy and spacing (model has more context) but longer
+        # delay before text appears in the UI.
+        # 1s  — ~1s latency, poor word boundaries, period-per-utterance
+        # 3s  — ~3s latency, good quality for clear speech  (DEFAULT)
+        # 5s  — ~5s latency, best accuracy for accented/fast speech
+        self.STREAM_WINDOW_S: float = stream_window_s
 
         # Derived constants
         self.sample_rate = 16000
@@ -109,6 +117,7 @@ class NemoStreamingServer(ASREngine):
             idle_timeout_s=config.get("idle_unload_seconds", 300),
             hotwords=config.get("hotwords", []),
             hotwords_files=config.get("hotwords_files", []),
+            stream_window_s=config.get("stream_window_s", 3.0),
         )
 
     # ── Hotword correction ───────────────────────────────────────────────
@@ -316,9 +325,8 @@ class NemoStreamingServer(ASREngine):
 
     # ── Streaming transcription ──────────────────────────────────────────
 
-    # Transcribe only the latest N seconds (not the full buffer)
-    # Lower = more responsive but more GPU calls. 1s gives ~100ms inference per window.
-    STREAM_WINDOW_S = 1.0
+    # STREAM_WINDOW_S is now set as an instance variable in __init__.
+    # Default is 3.0s — see __init__ docstring for latency/quality tradeoff.
 
     async def transcribe_stream(
         self,

@@ -46,12 +46,14 @@ class NemoMultitalkerServer(NemoStreamingServer):
         chunk_size_ms: int = 160,
         max_speakers: int = 4,
         idle_timeout_s: int = 300,
+        stream_window_s: float = 3.0,
     ):
         super().__init__(
             model_name=model_name,
             device=device,
             chunk_size_ms=chunk_size_ms,
             idle_timeout_s=idle_timeout_s,
+            stream_window_s=stream_window_s,
         )
         self.max_speakers = max_speakers
         self._diar_model = None
@@ -64,6 +66,7 @@ class NemoMultitalkerServer(NemoStreamingServer):
             chunk_size_ms=config.get("chunk_size_ms", 160),
             max_speakers=config.get("max_speakers", 4),
             idle_timeout_s=config.get("idle_unload_seconds", 300),
+            stream_window_s=config.get("stream_window_s", 3.0),
         )
 
     @property

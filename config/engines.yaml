@@ -98,6 +98,13 @@ asr:
       streaming: true
       chunk_size_ms: 160               # 80ms lookahead (good latency/accuracy balance)
       idle_unload_seconds: 300         # Unload model after 5 min idle
+      # How many seconds of new audio to buffer before triggering a decode.
+      # Higher = better word spacing, grammar, and accent handling (more context).
+      # Lower  = faster text appearance in the UI (more real-time feel).
+      #   1.0s — fastest, but expects short phrases (old default, caused merged words)
+      #   3.0s — recommended for clear speech (default)
+      #   5.0s — recommended for accented speech or fast dictation
+      stream_window_s: 3.0
 
       # ── Medical hotword correction ──────────────────────────────────────
       # Post-transcription text correction for medical terms NeMo mis-hears.
@@ -116,6 +123,9 @@ asr:
         - "config/dictionaries/orthopedic.txt"
         - "config/dictionaries/gastroenterology.txt"
         - "config/dictionaries/chiropractic.txt"
+        # Pain medicine / neurology — branded drugs, IME terms, injection procedures
+        # sourced from Dr. Pello's practice vocabulary
+        - "config/dictionaries/pain_medicine.txt"
 
       # Inline hotwords (supplement the dictionary files above).
       # Good for universal abbreviations and drug names not in any specialty file.
@@ -162,6 +172,7 @@ asr:
       max_speakers: 4
       chunk_size_ms: 160
       idle_unload_seconds: 300
+      stream_window_s: 3.0             # Match single-speaker window for consistency
 
     deepgram:                           # Cloud option (future)
       type: deepgram

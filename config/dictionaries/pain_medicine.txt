@@ -1,0 +1,273 @@
+# Pain Medicine & Neurology specialty vocabulary
+# Extracted from Dr. Pello's practice vocabulary (neurology / pain management / IME).
+# Covers conditions, procedures, anatomy, and branded medications common in
+# injury-related evaluations that may not appear in the 98K OpenMedSpel wordlist.
+
+# ── Conditions / Diagnoses ───────────────────────────────────────────────────
+postconcussive syndrome
+posttraumatic headaches
+traumatic brain injury
+occipital neuralgia
+radiculitis
+cervical radiculitis
+lumbar radiculitis
+neurofibromatosis
+neurofibromatosis type I
+neurofibroma
+neurofibromas
+disequilibrium
+postconcussive
+posttraumatic
+post-concussive
+post-traumatic
+radiculopathy
+cervical radiculopathy
+lumbar radiculopathy
+myeloradiculopathy
+cervicogenic headache
+intractable headache
+photophobia
+phonophobia
+tinnitus
+myofascial pain
+myofascial
+paresthesias
+dysesthesias
+hyperalgesia
+allodynia
+causalgia
+complex regional pain syndrome
+CRPS
+fibromyalgia
+chronic pain syndrome
+facetogenic pain
+discogenic pain
+spondylolisthesis
+spondylolysis
+spondylosis
+foraminal stenosis
+spinal stenosis
+disc herniation
+disc protrusion
+disc bulge
+disc extrusion
+annular tear
+herniated nucleus pulposus
+HNP
+perineural cyst
+transitional lumbosacral anatomy
+
+# ── Anatomy ──────────────────────────────────────────────────────────────────
+paraspinal musculature
+paraspinal
+cervical paraspinal
+lumbar paraspinal
+subdeltoid bursa
+sacroiliac joint
+sacroiliac
+interlaminar
+lumbosacral
+posterolateral
+posterior superior labrum
+labrum
+labral tear
+occipital condyle
+occipital condyles
+trapezius
+rhomboid
+deltoid
+subdeltoid
+supraspinatus
+infraspinatus
+teres minor
+rotator cuff
+subacromial bursa
+acromioclavicular joint
+sternoclavicular joint
+thoracolumbar fascia
+iliotibial band
+piriformis
+sciatic nerve
+femoral nerve
+peroneal nerve
+tibial nerve
+median nerve
+ulnar nerve
+radial nerve
+brachial plexus
+lumbosacral plexus
+
+# ── Physical Examination ─────────────────────────────────────────────────────
+Spurling's sign
+Spurling's
+Romberg sign
+Romberg
+straight leg raise
+SLR
+FABER test
+FADIR test
+empty can sign
+Neer sign
+Hawkins sign
+drop arm sign
+apprehension sign
+pivot shift
+McMurray test
+Lachman test
+axial loading
+axial compression
+Waddell signs
+Hoffmann sign
+Babinski sign
+clonus
+hyperreflexia
+hyporeflexia
+areflexia
+dermatomal
+myotomal
+atrophy
+fasciculations
+cogwheel rigidity
+spasticity
+tone
+
+# ── Procedures / Interventions ───────────────────────────────────────────────
+trigger point injection
+trigger point injections
+epidural steroid injection
+epidural steroid injections
+cervical epidural steroid injection
+lumbar epidural steroid injection
+interlaminar epidural steroid injection
+transforaminal epidural steroid injection
+caudal epidural steroid injection
+medial branch block
+radiofrequency ablation
+RFA
+sympathetic nerve block
+stellate ganglion block
+facet joint injection
+sacroiliac joint injection
+nerve root block
+selective nerve root block
+spinal cord stimulation
+SCS
+intrathecal pump
+lumbar puncture
+EMG
+nerve conduction study
+NCS
+fluoroscopy-guided
+ultrasound-guided
+hyperbaric oxygen therapy
+vestibular therapy
+cognitive therapy
+PT
+occupational therapy
+OT
+chiropractic therapy
+chiropractic
+IME
+independent medical evaluation
+
+# ── Imaging / Studies ─────────────────────────────────────────────────────────
+MRI lumbar spine
+MRI cervical spine
+MRI brain
+CT myelogram
+electrodiagnostic
+electrodiagnostic evidence
+DEXA scan
+bone scan
+discogram
+
+# ── Branded Medications ───────────────────────────────────────────────────────
+# (generic names are usually in the 98k wordlist; brand names often are not)
+Ubrelvy
+Nurtec
+Nurtec ODT
+Qulipta
+Zanaflex
+Compazine
+Zofran
+Celebrex
+Topamax
+Effexor
+Cymbalta
+Lyrica
+Aimovig
+Ajovy
+Emgality
+Vyepti
+Botox
+Depo-Medrol
+Kenalog
+Celestone
+rizatriptan
+sumatriptan
+zolmitriptan
+eletriptan
+almotriptan
+frovatriptan
+naratriptan
+lasmiditan
+ubrogepant
+rimegepant
+atogepant
+meclizine
+cyclobenzaprine
+carisoprodol
+methocarbamol
+baclofen
+tizanidine
+amitriptyline
+nortriptyline
+duloxetine
+pregabalin
+gabapentin
+memantine
+amantadine
+propranolol
+topiramate
+valproate
+valproic acid
+sodium valproate
+phenobarbital
+levetiracetam
+oxcarbazepine
+carbamazepine
+meloxicam
+naproxen
+diclofenac
+ketorolac
+celecoxib
+tramadol
+hydrocodone
+oxycodone
+oxycontin
+morphine sulfate
+buprenorphine
+naloxone
+Suboxone
+cyclobenzaprine
+lidocaine
+lidocaine ointment
+capsaicin
+diclofenac gel
+voltaren
+Synthroid
+levothyroxine
+metformin
+lisinopril
+amlodipine
+
+# ── Clinical Abbreviations (pain/neuro context) ───────────────────────────────
+p.o.
+b.i.d.
+t.i.d.
+q.i.d.
+q.h.s.
+p.r.n.
+mg
+mEq
+mcg

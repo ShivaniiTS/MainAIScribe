@@ -1,19 +1,69 @@
-id: dr_scott_pello
-name: Dr. Scott Pello
-credentials: ''
-specialty: general
-practice_id: ''
-note_format: SOAP
-noise_suppression_level: moderate
-postprocessor_mode: hybrid
-npi: ''
 asr_override: null
-llm_override: null
 correction_count: 0
-style_model_version: v0
-style_directives: []
-custom_vocabulary: []
-template_routing:
-  default: soap_default
+credentials: MD
+custom_vocabulary:
+- Excelsia
+- cervicogenic
+- post-traumatic
+- post-concussion
+- concussion
+- headache
+- migraine
+- cranial nerves
+- neuropathy
+- radiculopathy
+- electroencephalogram
+- EEG
+- MRI brain
+- CT head
+- cervical spine
+- neurological
+- cognitive
+- cyclobenzaprine
+- paresthesias
+- radiculitis
+- dizziness
+- vertigo
+- paresthesia
+- dysesthesia
+- neurology
+- normocephalic
+- atraumatic
+- gabapentin
+- rizatriptan
+- Qulipta
+- meclizine
+id: dr_scott_pello
+llm_override: null
+name: Dr. Scott Pello
+noise_suppression_level: moderate
+note_format: SOAP
+npi: ''
+postprocessor_mode: hybrid
+practice_id: excelsia_injury_care
 quality_scores: {}
 quality_history: []
+specialty: neurology
+style_directives:
+- Write in third person (e.g. 'The patient presents...' not 'Patient presents')
+- Use past tense for examination findings and interval history
+- Spell out abbreviations on first use (e.g. 'electroencephalogram (EEG)')
+- List diagnoses in the Assessment as numbered items
+- Mirror Assessment numbering in the Plan (Plan item 1 corresponds to Assessment item
+  1)
+- Use formal clinical language; avoid contractions
+- Document neurological exam findings systematically (mental status, cranial nerves,
+  motor, sensory, reflexes, gait)
+- For post-traumatic headache evaluations, document headache frequency, duration,
+  and severity scale
+- Reference prior imaging results (CT, MRI) and their findings in the Assessment
+- Document work status and activity restrictions when mentioned
+- For injury cases, reference the injury date and mechanism in the HPI
+style_model_version: v0
+template_routing:
+  assume_care: neuro_initial_eval
+  default: neuro_follow_up
+  discharge: neuro_follow_up
+  follow_up: neuro_follow_up
+  initial: neuro_initial_eval
+  initial_evaluation: neuro_initial_eval

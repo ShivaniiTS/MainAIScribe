@@ -63,3 +63,5 @@ neuralgia
 migraine
 tension headache
 cluster headache
+normocephalic
+atraumatic

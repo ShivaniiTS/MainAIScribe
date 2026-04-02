@@ -4,6 +4,15 @@ credentials: MD
 custom_vocabulary:
 - Excelsia
 - Spurling
+- cervical
+- thoracic
+- lumbar
+- X Ray
+- MRI
+- CT
+- range of motion
+- musculoskeletal
+- ibuprofen
 - Tinel
 - Phalen
 - Hawkins
@@ -12,6 +21,7 @@ custom_vocabulary:
 - Lachman
 - paralumbar
 - pyannote
+- Parasitical
 - physiatry
 - physiatrist
 - facet

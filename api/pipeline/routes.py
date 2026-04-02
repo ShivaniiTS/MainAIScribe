@@ -231,7 +231,9 @@ async def trigger_pipeline(job_id: str, req: PipelineTriggerRequest | None = Non
         raise HTTPException(status_code=409, detail="Pipeline already running for this job")
 
     mode = req.mode if req else job.get("mode", "dictation")
-    provider_id = req.provider_id if req and req.provider_id else job.get("provider_id", "")
+    _raw_pid = req.provider_id if req and req.provider_id else job.get("provider_id", "")
+    from config.provider_manager import get_provider_manager as _gpm
+    provider_id = _gpm().resolve_provider_id(_raw_pid) if _raw_pid else _raw_pid
     visit_type = req.visit_type if req else "follow_up"
 
     # Find audio file
@@ -561,7 +563,9 @@ async def batch_upload(
         sample_id = parts[0]
         item = item_map.get(sample_id, {})
         mode = item.get("mode", "dictation")
-        provider_id = item.get("provider_id", "unknown")
+        _raw_pid = item.get("provider_id", "unknown")
+        from config.provider_manager import get_provider_manager as _gpm
+        provider_id = _gpm().resolve_provider_id(_raw_pid) if _raw_pid else _raw_pid
 
         data_mode = "conversation" if mode == "ambient" else mode
         encounter_dir = data_root / data_mode / provider_id / sample_id

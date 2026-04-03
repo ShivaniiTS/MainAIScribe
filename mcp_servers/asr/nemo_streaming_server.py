@@ -98,6 +98,27 @@ _ALLCAPS_STOPWORDS: frozenset[str] = frozenset([
     "HIS", "ITS", "SHE", "HE", "IT", "WE", "THEY", "HIM", "THEM",
 ])
 
+# ── Medical note section-header patterns ──────────────────────────────────────
+# When a provider dictates a section header it should appear in ALL CAPS in the
+# transcript (the frontend renders it as a heading).  Patterns are matched
+# case-insensitively; the longest / most-specific are listed first.
+_SECTION_HEADER_PATTERNS: list[tuple[re.Pattern, str]] = [
+    (re.compile(r'\bhist(?:ory)?\s+of\s+present\s+illness\b', re.IGNORECASE),
+     "HISTORY OF PRESENT ILLNESS"),
+    (re.compile(r'\bpast\s+(?:medical\s+)?hist(?:ory)?\b', re.IGNORECASE),
+     "PAST MEDICAL HISTORY"),
+    (re.compile(r'\bphysical\s+exam(?:ination)?\b', re.IGNORECASE),
+     "PHYSICAL EXAMINATION"),
+    (re.compile(r'\breview\s+of\s+systems\b', re.IGNORECASE),
+     "REVIEW OF SYSTEMS"),
+    (re.compile(r'\bchief\s+complaint\b', re.IGNORECASE),
+     "CHIEF COMPLAINT"),
+    (re.compile(r'\bassessment\b', re.IGNORECASE),
+     "ASSESSMENT"),
+    (re.compile(r'\bplan\b', re.IGNORECASE),
+     "PLAN"),
+]
+
 # ── Optional wordninja import ─────────────────────────────────────────────────
 # wordninja splits merged English words using word-frequency statistics.
 # e.g. "historyOf" → "history Of"  /  "neck paintand" → "neck paint and"
@@ -397,20 +418,18 @@ class NemoStreamingServer(ASREngine):
         abbreviations like DM, IV, BP work). Terms loaded from *files* skip anything
         ≤2 chars to prevent false-positive corrections from the 98K wordlist.
 
-        Phonetic corrections (_PHONETIC_CORRECTIONS) are seeded first so that
-        any file-loaded term can override them without special casing.
+        Priority order (highest wins):
+          1. Inline per-server hotwords (passed to __init__)
+          2. Phonetic corrections (_PHONETIC_CORRECTIONS) — always override wordlist
+          3. Dictionary / wordlist files
+
+        _PHONETIC_CORRECTIONS are applied LAST so that a generic wordlist entry like
+        "propanol" in the 98K OpenMedSpel list cannot silently cancel a known
+        misrecognition fix ("propanol" → "propranolol").
         """
-        # Seed with phonetic corrections first (lowest priority — files override).
-        self._hotword_map.update(_PHONETIC_CORRECTIONS)
-
-        # Load inline hotwords first — no length restriction.
-        for term in hotwords:
-            key = term.lower().strip()
-            if key:
-                self._hotword_map[key] = term.strip()
-
-        # Load file terms — skip very short (≤2 chars) to avoid false positives
-        # from generic entries in the 98K OpenMedSpel wordlist ("aa", "ab", etc.).
+        # Load file terms first (lowest priority).
+        # Skip very short (≤2 chars) to avoid false positives from generic entries
+        # in the 98K OpenMedSpel wordlist ("aa", "ab", etc.).
         for path in hotwords_files:
             if not os.path.isabs(path):
                 # Resolve relative to project root (two levels up from this file)
@@ -428,6 +447,16 @@ class NemoStreamingServer(ASREngine):
                             self._hotword_map[key] = term
             except OSError as exc:
                 logger.warning("nemo_streaming: could not load hotwords file %s — %s", path, exc)
+
+        # Phonetic corrections override file-loaded terms (they fix known misrecognitions
+        # that must not be cancelled by a generic wordlist casing entry).
+        self._hotword_map.update(_PHONETIC_CORRECTIONS)
+
+        # Inline hotwords override everything — provider-specific exact spellings.
+        for term in hotwords:
+            key = term.lower().strip()
+            if key:
+                self._hotword_map[key] = term.strip()
 
         if self._hotword_map:
             logger.info("nemo_streaming: loaded %d hotword entries", len(self._hotword_map))
@@ -835,25 +864,41 @@ class NemoStreamingServer(ASREngine):
         return " ".join(result)
 
     def _normalize_numeric_date(self, text: str) -> str:
-        """Convert "DD M YYYY" sequences (after digit conversion) to "DD/M/YYYY".
+        """Convert numeric digit date sequences to formatted dates.
 
-        After _convert_medical_numbers runs, a spoken date like
-        "twenty four two twenty twenty six" becomes "24 2 2026".
-        This final step detects that three-number sequence and formats it as
-        "24/2/2026" (preserving the day/month/year order the speaker used).
+        After _convert_medical_numbers runs, handles two patterns:
 
-        Only fires when:
-          • d1 ∈ 1–31  (plausible day)
-          • d2 ∈ 1–12  (plausible month)
-          • year ∈ 1900–2100
+          4-digit year (D/M/YYYY or M/D/YYYY):
+            "24 2 2026" → "24/2/2026"   (d1≤31, d2≤12, year 1900-2100)
+
+          2-digit year, American M/D/YY (d1 must be a valid month 1-12):
+            "2 14 23"  → "2/14/2023"   (d1≤12, d2≤31, yr≤30 → 2000+yr)
+            "2 8 23"   → "2/8/2023"
+            "10 5 24"  → "10/5/2024"
+
+          For 2-digit years: 00-30 → 2000-2030, 31-99 → 1931-1999.
+          The 2-digit path requires d1≤12 so that bare 3-number medical
+          expressions (e.g. "24 mg 10") are not mistaken for dates.
         """
-        def _replace(m: re.Match) -> str:
+        def _replace_4(m: re.Match) -> str:
             d1, d2, yr = int(m.group(1)), int(m.group(2)), int(m.group(3))
             if 1 <= d1 <= 31 and 1 <= d2 <= 12 and 1900 <= yr <= 2100:
                 return f"{d1}/{d2}/{yr}"
             return m.group(0)
 
-        return re.sub(r'\b(\d{1,2})\s+(\d{1,2})\s+(\d{4})\b', _replace, text)
+        def _replace_2(m: re.Match) -> str:
+            d1, d2, yr_short = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            yr = 2000 + yr_short if yr_short <= 30 else 1900 + yr_short
+            # Only fire when d1 is a valid month (1-12) to reduce false positives.
+            if 1 <= d1 <= 12 and 1 <= d2 <= 31:
+                return f"{d1}/{d2}/{yr}"
+            return m.group(0)
+
+        # 4-digit year first (more specific, can't be confused with 2-digit)
+        text = re.sub(r'\b(\d{1,2})\s+(\d{1,2})\s+(\d{4})\b', _replace_4, text)
+        # 2-digit year: M/D/YY only when d1 is a valid month
+        text = re.sub(r'\b(\d{1,2})\s+(\d{1,2})\s+(\d{2})\b', _replace_2, text)
+        return text
 
     # ── Ordinal-day parser (for spoken-date normalizer) ──────────────────
 
@@ -1035,6 +1080,24 @@ class NemoStreamingServer(ASREngine):
                 capitalize_next = False
         return "".join(chars)
 
+    @staticmethod
+    def _normalize_section_headers(text: str) -> str:
+        """Uppercase recognized medical note section headers.
+
+        When a provider dictates a section name (e.g. "history of present illness")
+        it should appear ALL CAPS in the transcript so the frontend can render it
+        as a heading.  Matching is case-insensitive.
+
+        Examples:
+            "history of present illness"  → "HISTORY OF PRESENT ILLNESS"
+            "Physical Examination"        → "PHYSICAL EXAMINATION"
+            "past medical history"        → "PAST MEDICAL HISTORY"
+            "assessment"                  → "ASSESSMENT"
+        """
+        for pattern, replacement in _SECTION_HEADER_PATTERNS:
+            text = pattern.sub(replacement, text)
+        return text
+
     def _normalize_segment_text(self, text: str) -> str:
         """Final normalization pass on a transcribed segment.
 
@@ -1136,6 +1199,9 @@ class NemoStreamingServer(ASREngine):
 
             # Capitalize sentence starts after punctuation is restored (free, 0 ms)
             text = self._capitalize_sentences(text)
+
+            # Uppercase medical note section headers (free, 0 ms)
+            text = self._normalize_section_headers(text)
 
             if text:
                 partial = PartialTranscript(

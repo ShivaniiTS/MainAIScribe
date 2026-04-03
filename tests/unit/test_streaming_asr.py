@@ -1362,3 +1362,133 @@ class TestCervicothoracicThoracolumbarCorrections:
         assert s._apply_hotword_corrections(
             "examining the thoraco lumbar spine and sacroiliac joint"
         ) == "examining the thoracolumbar spine and sacroiliac joint"
+
+
+class TestNumericDateTwoDigitYear:
+    """2-digit year support for M/D/YY format (e.g. '2 14 23' → '2/14/2023')."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    def test_mdy_2digit_year(self):
+        """'2 14 23' is unambiguously M/D/YY (d2=14 > 12)."""
+        result = self._server()._normalize_numeric_date("2 14 23")
+        assert result == "2/14/2023"
+
+    def test_mdy_2digit_year_in_sentence(self):
+        result = self._server()._normalize_numeric_date("accident occurred 2 14 23 evaluation")
+        assert "2/14/2023" in result
+
+    def test_mdy_2digit_year_recent(self):
+        result = self._server()._normalize_numeric_date("2 8 24")
+        assert result == "2/8/2024"
+
+    def test_mdy_2digit_year_threshold(self):
+        """Year 30 → 2030, year 31 → 1931."""
+        s = self._server()
+        assert s._normalize_numeric_date("1 1 30") == "1/1/2030"
+        assert s._normalize_numeric_date("1 1 31") == "1/1/1931"
+
+    def test_d1_gt_12_not_mdy_2digit(self):
+        """d1 > 12 means not a valid month — 2-digit year path must not fire."""
+        result = self._server()._normalize_numeric_date("24 2 26")
+        assert "/" not in result
+
+    def test_4digit_year_still_works(self):
+        """Existing 4-digit year behaviour unchanged."""
+        result = self._server()._normalize_numeric_date("24 2 2026")
+        assert result == "24/2/2026"
+
+    def test_invalid_day_gt31_no_match(self):
+        """d2 must be ≤ 31 — '2 33 23' must not fire."""
+        result = self._server()._normalize_numeric_date("2 33 23")
+        assert "/" not in result
+
+
+class TestSectionHeaderNormalization:
+    """Section headers should be uppercased regardless of input casing."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    def test_history_of_present_illness_lower(self):
+        s = self._server()
+        assert s._normalize_section_headers("history of present illness") == \
+            "HISTORY OF PRESENT ILLNESS"
+
+    def test_history_of_present_illness_mixed(self):
+        s = self._server()
+        assert s._normalize_section_headers("History of Present Illness") == \
+            "HISTORY OF PRESENT ILLNESS"
+
+    def test_past_medical_history(self):
+        s = self._server()
+        assert s._normalize_section_headers("past medical history") == \
+            "PAST MEDICAL HISTORY"
+
+    def test_physical_examination(self):
+        s = self._server()
+        assert s._normalize_section_headers("physical examination") == \
+            "PHYSICAL EXAMINATION"
+
+    def test_physical_exam_abbreviation(self):
+        s = self._server()
+        assert s._normalize_section_headers("physical exam") == \
+            "PHYSICAL EXAMINATION"
+
+    def test_assessment(self):
+        s = self._server()
+        assert s._normalize_section_headers("assessment") == "ASSESSMENT"
+
+    def test_review_of_systems(self):
+        s = self._server()
+        assert s._normalize_section_headers("review of systems") == "REVIEW OF SYSTEMS"
+
+    def test_chief_complaint(self):
+        s = self._server()
+        assert s._normalize_section_headers("chief complaint") == "CHIEF COMPLAINT"
+
+    def test_case_insensitive(self):
+        s = self._server()
+        assert s._normalize_section_headers("PHYSICAL EXAMINATION") == \
+            "PHYSICAL EXAMINATION"
+
+    def test_section_header_in_longer_text(self):
+        s = self._server()
+        result = s._normalize_section_headers(
+            "history of present illness the patient is a 45 year old"
+        )
+        assert result.startswith("HISTORY OF PRESENT ILLNESS")
+
+
+class TestPropranololPhoneticPriority:
+    """Phonetic corrections must win over medical wordlist entries."""
+
+    def test_propanol_to_propranolol(self):
+        """propanol is in medical_wordlist.txt — phonetic override must still fire."""
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        import tempfile, os
+        # Simulate production: load a file that contains "propanol" (like the wordlist)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt",
+                                        delete=False, encoding="utf-8") as f:
+            f.write("propanol\n")
+            tmp = f.name
+        try:
+            s = NemoStreamingServer(hotwords_files=[tmp])
+            result = s._apply_hotword_corrections("60 mg of propanol")
+            assert result == "60 mg of propranolol", (
+                "Phonetic correction should override wordlist entry for propanol"
+            )
+        finally:
+            os.unlink(tmp)
+
+    def test_inline_hotword_can_still_override_phonetic(self):
+        """Inline per-session hotwords retain highest priority."""
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        # If a provider explicitly adds "propanol" as inline hotword it should win.
+        s = NemoStreamingServer(hotwords=["propanol"])
+        result = s._apply_hotword_corrections("60 mg of propanol")
+        # Inline hotword preserves "propanol" as-is (maps to itself)
+        assert result == "60 mg of propanol"

@@ -84,6 +84,12 @@ rotator cuff
 subacromial bursa
 acromioclavicular joint
 sternoclavicular joint
+cervicothoracic
+cervicothoracic junction
+cervicothoracic spine
+thoracolumbar
+thoracolumbar junction
+thoracolumbar spine
 thoracolumbar fascia
 iliotibial band
 piriformis

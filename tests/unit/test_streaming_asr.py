@@ -1275,3 +1275,90 @@ class TestNewPhoneticCorrections:
         s = self._server()
         assert s._apply_hotword_corrections("ongoing chiro practic therapy") == \
             "ongoing chiropractic therapy"
+
+
+class TestRadiculitisPhoneticVariants:
+    """Tests for NeMo mishearing 'radiculitis' as 'reticulities' and related variants."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    def test_reticulities_to_radiculitis(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("reticulities") == "radiculitis"
+
+    def test_cervical_reticulities(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("cervical reticulities") == "cervical radiculitis"
+
+    def test_lumbar_reticulities(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("lumbar reticulities") == "lumbar radiculitis"
+
+    def test_retic_ulitis(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("retic ulitis") == "radiculitis"
+
+    def test_reticulo_pathy(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("reticulo pathy") == "radiculopathy"
+
+    def test_cervical_reticulo_pathy(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("cervical reticulo pathy") == "cervical radiculopathy"
+
+    def test_reticulities_in_sentence(self):
+        s = self._server()
+        assert s._apply_hotword_corrections(
+            "diagnosis of cervical reticulities at C5-C6"
+        ) == "diagnosis of cervical radiculitis at C5-C6"
+
+
+class TestCervicothoracicThoracolumbarCorrections:
+    """Tests for cervicothoracic and thoracolumbar spoken-form corrections."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    def test_cervico_thoracic(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("cervico thoracic") == "cervicothoracic"
+
+    def test_cervico_thoracic_junction(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("cervico thoracic junction") == \
+            "cervicothoracic junction"
+
+    def test_cervico_thoracic_spine(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("cervico thoracic spine") == "cervicothoracic spine"
+
+    def test_thoraco_lumbar(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("thoraco lumbar") == "thoracolumbar"
+
+    def test_thoraco_lumbar_junction(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("thoraco lumbar junction") == "thoracolumbar junction"
+
+    def test_thoraco_lumbar_spine(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("thoraco lumbar spine") == "thoracolumbar spine"
+
+    def test_thoraco_lumbar_fascia(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("thoraco lumbar fascia") == "thoracolumbar fascia"
+
+    def test_cervicothoracic_in_sentence(self):
+        s = self._server()
+        assert s._apply_hotword_corrections(
+            "tenderness at the cervico thoracic junction"
+        ) == "tenderness at the cervicothoracic junction"
+
+    def test_thoracolumbar_in_sentence(self):
+        s = self._server()
+        assert s._apply_hotword_corrections(
+            "examining the thoraco lumbar spine and sacroiliac joint"
+        ) == "examining the thoracolumbar spine and sacroiliac joint"

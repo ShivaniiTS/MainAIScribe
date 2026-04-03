@@ -138,6 +138,21 @@ _PHONETIC_CORRECTIONS: dict[str, str] = {
     "radical opathy": "radiculopathy",
     "radicular opathy": "radiculopathy",
     "radio culopathy": "radiculopathy",
+    # NeMo mishears "radiculitis" as "reticulities" / "reticulo*" variants
+    "reticulities": "radiculitis",
+    "cervical reticulities": "cervical radiculitis",
+    "lumbar reticulities": "lumbar radiculitis",
+    "retic ulitis": "radiculitis",
+    "reticulo pathy": "radiculopathy",
+    "cervical reticulo pathy": "cervical radiculopathy",
+    # ── Cervicothoracic / thoracolumbar ────────────────────────────────────
+    "cervico thoracic": "cervicothoracic",
+    "cervico thoracic junction": "cervicothoracic junction",
+    "cervico thoracic spine": "cervicothoracic spine",
+    "thoraco lumbar": "thoracolumbar",
+    "thoraco lumbar junction": "thoracolumbar junction",
+    "thoraco lumbar spine": "thoracolumbar spine",
+    "thoraco lumbar fascia": "thoracolumbar fascia",
     # ── Cervical / lumbar levels ──────────────────────────────────────────
     "cdl seven": "C7",
     "cdl six": "C6",

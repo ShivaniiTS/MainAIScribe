@@ -219,6 +219,36 @@ _PHONETIC_CORRECTIONS: dict[str, str] = {
     "serial seven": "Serial-7",
     "serial sevens": "Serial-7",
     "romberg sign": "Romberg sign",
+    # ── Additional phonetic errors seen in live dictation ─────────────────
+    # Zofran variants
+    "zaffron": "Zofran",
+    "zaf fran": "Zofran",
+    "zaf ron": "Zofran",
+    "zaff ron": "Zofran",
+    # Myofascial
+    "myofacial": "myofascial",
+    "myo facial": "myofascial",
+    "mayo facial": "myofascial",
+    # Vestibular
+    "tibular": "vestibular",
+    "tibular cognitive therapy": "vestibular cognitive therapy",
+    "tib ular": "vestibular",
+    # "further details" misheard as "Firefox details"
+    "firefox details": "further details",
+    "fire fox details": "further details",
+    # "pre-injury job" phrasing
+    "pre job injury": "pre-injury job duties",
+    # Chiropractic
+    "chiro practic": "chiropractic",
+    "chiro practic therapy": "chiropractic therapy",
+    # "she is no complaining" → "she is not complaining"  (NeMo hears "no" for "not")
+    "is no complaining": "is not complaining",
+    "is no able to": "is not able to",
+    "she is no able": "she is not able",
+    # Visual disturbance (merged capitalised)
+    "visualdisturbance": "visual disturbance",
+    # "date of access" → avoid interpreting "access" as a stop word
+    "date of access": "date of access",
 }
 
 # ── Optional deepmultilingualpunctuation import ───────────────────────────────
@@ -561,12 +591,18 @@ class NemoStreamingServer(ASREngine):
     def _split_merged_words(self, text: str) -> str:
         """Split merged or camelCase tokens using wordninja.
 
-        Only applied to tokens that look merged — those containing an internal
-        uppercase letter (e.g. "historyOf", "THEContinues", "neck paintand").
+        Two cases handled:
+          1. CamelCase merges  — internal uppercase boundary, e.g. "historyOf",
+             "Visualdisturbance", "AccESSOctober", "THEpatient".
+          2. All-lowercase merges — no uppercase at all, e.g. "todaypostconcussive",
+             "headacheand", "wellvestibular".  These are caught by a minimum length
+             threshold (> 14 chars) combined with a split-quality check: wordninja
+             must return at least 2 parts AND each part must be ≥ 3 chars.
+
         Tokens that are:
-          • short (≤ 6 chars)
+          • short (≤ 6 chars for camelCase; ≤ 14 chars for pure-lowercase)
           • pure ALL-CAPS known abbreviations (e.g. ASR, HTN, IV)
-          • present in the medical hotword map
+          • present in the medical hotword map (single-word entries)
         are left untouched to protect medical terminology.
 
         Silently returns original text when wordninja is not installed.
@@ -574,9 +610,13 @@ class NemoStreamingServer(ASREngine):
         if not _WORDNINJA_AVAILABLE:
             return text
 
-        # Tokens whose internal structure looks like two merged words:
-        # lowercase→Uppercase boundary ("historyOf") or ALL-CAPS→lower ("THEpatient")
-        _merged_re = re.compile(r'[a-z][A-Z]|[A-Z]{2,}[a-z]')
+        # Boundary indicating two merged words: lowercase→Uppercase ("historyOf")
+        # or ALL-CAPS run followed by lowercase ("THEpatient", "AccESSOctober").
+        _camel_re = re.compile(r'[a-z][A-Z]|[A-Z]{2,}[a-z]')
+
+        # Minimum token length to attempt all-lowercase splitting.
+        # "postconcussive" is 14 chars; shorter single words should not be split.
+        _LOWERCASE_SPLIT_THRESHOLD = 14
 
         tokens = re.split(r'(\s+)', text)
         result: list[str] = []
@@ -588,19 +628,38 @@ class NemoStreamingServer(ASREngine):
             # Separate leading / trailing punctuation from the core word
             m_lead = re.match(r'^([^\w]+)', token)
             m_trail = re.search(r'([^\w]+)$', token)
-            lead = m_lead.group(1) if m_lead else ""
+            lead  = m_lead.group(1)  if m_lead  else ""
             trail = m_trail.group(1) if m_trail else ""
-            core = token[len(lead): len(token) - len(trail) if trail else len(token)]
+            core  = token[len(lead): len(token) - len(trail) if trail else len(token)]
 
-            # Guard: short, all-uppercase abbreviation, in hotword map, no merge pattern
-            if (len(core) <= 6
-                    or core.isupper()
-                    or core.lower() in self._hotword_map
-                    or not _merged_re.search(core)):
+            # Guard: pure ALL-CAPS abbreviation or single-word hotword entry — never split
+            if core.isupper() or core.lower() in self._hotword_map:
+                result.append(token)
+                continue
+
+            has_camel = bool(_camel_re.search(core))
+            is_long_lower = (not has_camel
+                             and len(core) > _LOWERCASE_SPLIT_THRESHOLD
+                             and core.replace("-", "").replace("'", "").isalpha())
+
+            # Short token with no camelCase → leave it alone
+            if len(core) <= 6 and not has_camel:
+                result.append(token)
+                continue
+
+            if not has_camel and not is_long_lower:
                 result.append(token)
                 continue
 
             parts = _wordninja.split(core)
+
+            # Quality gate for all-lowercase splits: each part must be ≥ 3 chars.
+            # This rejects bad splits like ["a", "nd"] for "and".
+            if is_long_lower and not has_camel:
+                if len(parts) < 2 or any(len(p) < 3 for p in parts):
+                    result.append(token)
+                    continue
+
             if len(parts) > 1:
                 result.append(lead + " ".join(parts) + trail)
             else:
@@ -927,19 +986,55 @@ class NemoStreamingServer(ASREngine):
         except (asyncio.TimeoutError, Exception):
             return text  # always degrade gracefully
 
+    @staticmethod
+    def _capitalize_sentences(text: str) -> str:
+        """Capitalize the first letter after sentence-ending punctuation (.!?).
+
+        Runs in O(n) with zero external dependencies and zero latency.
+        Called after _punctuate_text so that punctuation is already in place.
+
+        Rules:
+          - The very first non-space character is always capitalized.
+          - After a sentence-ending character (.!?) followed by one or more
+            spaces, the next letter is capitalized.
+          - Digits, non-letter characters, and existing uppercase are unchanged.
+
+        Examples:
+            "the patient presents today. she reports pain." →
+            "The patient presents today. She reports pain."
+        """
+        if not text:
+            return text
+
+        chars = list(text)
+        capitalize_next = True
+        for i, ch in enumerate(chars):
+            if ch in ".!?":
+                capitalize_next = True
+            elif capitalize_next and ch.isalpha():
+                chars[i] = ch.upper()
+                capitalize_next = False
+            elif not ch.isspace():
+                if capitalize_next and ch.isalpha():
+                    chars[i] = ch.upper()
+                capitalize_next = False
+        return "".join(chars)
+
     def _normalize_segment_text(self, text: str) -> str:
         """Final normalization pass on a transcribed segment.
 
         Pipeline (in order):
-          1. wordninja: split merged/camelCase tokens ("historyOf" → "history Of")
+          1. wordninja: split merged/camelCase/all-lowercase tokens
+             ("historyOf" → "history Of", "todaypostconcussive" → "today postconcussive")
           2. ALL-CAPS stopwords: lowercase NeMo-raised function words ("THE" → "the")
-          3. Number words → digits: "twenty seven year old" → "27-year-old"
-          4. Spoken-date conversion: "october twenty fifth twenty twenty four" → "October 25, 2024"
+          3. Spoken-date conversion: "october twenty fifth twenty twenty four" → "October 25, 2024"
+          4. Number words → digits: "twenty seven year old" → "27-year-old"
           5. Numeric-date formatting: "24 2 2026" → "24/2/2026"
           6. Collapse double-spaces.
 
-        Note: comma/period punctuation requires an LLM (or a dedicated punctuation
-        restoration model) — that is handled by the downstream note-generation pass.
+        Punctuation restoration and sentence capitalisation are performed
+        separately (in _punctuate_text and _capitalize_sentences) so they
+        can run async with bounded concurrency.
         """
         if not text:
             return text
@@ -1023,6 +1118,9 @@ class NemoStreamingServer(ASREngine):
 
             # Restore punctuation & capitalisation (async, bounded, graceful degradation)
             text = await self._punctuate_text(text)
+
+            # Capitalize sentence starts after punctuation is restored (free, 0 ms)
+            text = self._capitalize_sentences(text)
 
             if text:
                 partial = PartialTranscript(

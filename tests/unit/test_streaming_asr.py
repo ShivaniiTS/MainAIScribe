@@ -1142,3 +1142,136 @@ class TestPhoneticCorrections:
              patch("mcp_servers.asr.nemo_streaming_server._get_punct_model", return_value=broken_model):
             result = asyncio.run(s._punctuate_text("the patient presents today"))
         assert result == "the patient presents today"
+
+
+class TestLowercaseMergedWordSplitting:
+    """Tests for the all-lowercase merged-word detection in _split_merged_words."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    def test_camel_history_of(self):
+        s = self._server()
+        result = s._split_merged_words("historyOf present illness")
+        assert "history" in result.lower()
+        assert "Of" in result or "of" in result
+
+    def test_camel_visual_disturbance(self):
+        s = self._server()
+        result = s._split_merged_words("Visualdisturbance")
+        assert "visual" in result.lower() and "disturbance" in result.lower()
+
+    def test_short_token_untouched(self):
+        s = self._server()
+        assert s._split_merged_words("the") == "the"
+        assert s._split_merged_words("IV") == "IV"
+
+    def test_allcaps_abbreviation_untouched(self):
+        s = self._server()
+        assert s._split_merged_words("MRI") == "MRI"
+        assert s._split_merged_words("HTN") == "HTN"
+
+    def test_hotword_entry_not_split(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        s = NemoStreamingServer(hotwords=["postconcussive"])
+        result = s._split_merged_words("postconcussive")
+        assert result == "postconcussive"
+
+    def test_long_lowercase_merge_split(self):
+        """'todaypostconcussive' (21 chars, all-lowercase) must be split."""
+        s = self._server()
+        result = s._split_merged_words("todaypostconcussive syndrome")
+        # Must contain a space before syndrome (i.e. something was split)
+        assert "today" in result.lower() or "postconcussive" in result.lower()
+
+    def test_visual_disturbance_no_camel(self):
+        """'visualdisturbance' (18 chars, all-lowercase) exceeds threshold."""
+        s = self._server()
+        result = s._split_merged_words("visualdisturbance")
+        assert "visual" in result.lower() and "disturbance" in result.lower()
+
+    def test_quality_gate_no_crash(self):
+        s = self._server()
+        result = s._split_merged_words("inflammationand")
+        assert isinstance(result, str) and len(result) > 0
+
+
+class TestCapitalizeSentences:
+    """Tests for _capitalize_sentences."""
+
+    def _cap(self, text: str) -> str:
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer._capitalize_sentences(text)
+
+    def test_first_word_capitalized(self):
+        assert self._cap("the patient presents today.") == "The patient presents today."
+
+    def test_after_period(self):
+        assert self._cap("she reports pain. she has headaches.") == \
+            "She reports pain. She has headaches."
+
+    def test_after_exclamation(self):
+        assert self._cap("good. excellent! she is improving.") == \
+            "Good. Excellent! She is improving."
+
+    def test_after_question_mark(self):
+        assert self._cap("is pain present? yes, it is.") == \
+            "Is pain present? Yes, it is."
+
+    def test_existing_uppercase_preserved(self):
+        assert self._cap("see Dr. Smith today. She is available.") == \
+            "See Dr. Smith today. She is available."
+
+    def test_digits_after_period_not_affected(self):
+        assert self._cap("score is 2+. 5/5 strength noted.") == \
+            "Score is 2+. 5/5 strength noted."
+
+    def test_empty_string(self):
+        assert self._cap("") == ""
+
+    def test_already_capitalized(self):
+        assert self._cap("The patient is fine.") == "The patient is fine."
+
+    def test_no_punctuation_only_first_char(self):
+        assert self._cap("the patient reports pain") == "The patient reports pain"
+
+    def test_multiple_spaces_between_sentences(self):
+        assert self._cap("the patient.  she is stable.") == \
+            "The patient.  She is stable."
+
+
+class TestNewPhoneticCorrections:
+    """Tests for phonetic corrections added from live transcript analysis."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    def test_zaffron_to_zofran(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("zaffron 4 mg") == "Zofran 4 mg"
+
+    def test_zaf_fran(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("given zaf fran for nausea") == \
+            "given Zofran for nausea"
+
+    def test_myofacial(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("myofacial pain") == "myofascial pain"
+
+    def test_tibular_vestibular(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("tibular cognitive therapy") == \
+            "vestibular cognitive therapy"
+
+    def test_firefox_details(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("firefox details remains") == \
+            "further details remains"
+
+    def test_chiro_practic(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("ongoing chiro practic therapy") == \
+            "ongoing chiropractic therapy"

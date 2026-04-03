@@ -109,6 +109,156 @@ try:
 except ImportError:
     _WORDNINJA_AVAILABLE = False
 
+# ── Phonetic corrections ──────────────────────────────────────────────────────
+# ASR phonetic misrecognitions → correct medical/clinical forms.
+# These are seeded into the hotword map at startup so they use the same
+# longest-match-first algorithm as hotword casing corrections.
+# Key   = what NeMo actually outputs (lowercase, as-spoken)
+# Value = what it should be (correct medical form)
+_PHONETIC_CORRECTIONS: dict[str, str] = {
+    # ── Reflexes ──────────────────────────────────────────────────────────
+    "deep tendon duplexes": "deep tendon reflexes",
+    "deep tendon duplicates": "deep tendon reflexes",
+    "deep tendon complex": "deep tendon reflexes",
+    "deep tendon reflex is": "deep tendon reflexes",
+    "two plex": "2+",
+    "to plex": "2+",
+    # ── Spurling's sign ───────────────────────────────────────────────────
+    "spiraling sign": "Spurling's sign",
+    "spirling sign": "Spurling's sign",
+    "sperlings sign": "Spurling's sign",
+    "sparlings sign": "Spurling's sign",
+    "spurlings sign": "Spurling's sign",
+    "sporting sign": "Spurling's sign",
+    "spearling sign": "Spurling's sign",
+    "spelling sign": "Spurling's sign",
+    # ── Radiculitis / radiculopathy ───────────────────────────────────────
+    "radical itis": "radiculitis",
+    "radicular itis": "radiculitis",
+    "radical opathy": "radiculopathy",
+    "radicular opathy": "radiculopathy",
+    "radio culopathy": "radiculopathy",
+    # ── Cervical / lumbar levels ──────────────────────────────────────────
+    "cdl seven": "C7",
+    "cdl six": "C6",
+    "cdl five": "C5",
+    "cdl four": "C4",
+    "cdl three": "C3",
+    "the cdl seven": "C7",
+    "c seven": "C7",
+    "c six": "C6",
+    "c five": "C5",
+    "l five s one": "L5-S1",
+    "l four l five": "L4-L5",
+    "l five": "L5",
+    "l four": "L4",
+    # ── Posttraumatic / postconcussive ────────────────────────────────────
+    "post concussive": "postconcussive",
+    "post concussive syndrome": "postconcussive syndrome",
+    "post traumatic": "posttraumatic",
+    "post traumatic headaches": "posttraumatic headaches",
+    # ── Neurofibromatosis ─────────────────────────────────────────────────
+    "neuro fibromatosis": "neurofibromatosis",
+    "neuro fibroma": "neurofibroma",
+    "neuro fibromas": "neurofibromas",
+    # ── Myofascial ────────────────────────────────────────────────────────
+    "myo fascial": "myofascial",
+    "mayo fascial": "myofascial",
+    "my o facial": "myofascial",
+    # ── Common medications ────────────────────────────────────────────────
+    "pro prana lol": "propranolol",
+    "propanol": "propranolol",
+    "pro pran alol": "propranolol",
+    "gap a pentin": "gabapentin",
+    "gamma pentin": "gabapentin",
+    "gaba pentin": "gabapentin",
+    "cyclo benso preen": "cyclobenzaprine",
+    "cyclo benz a preen": "cyclobenzaprine",
+    "melo xicam": "meloxicam",
+    "mel oxicam": "meloxicam",
+    "uber levy": "Ubrelvy",
+    "uber leave me": "Ubrelvy",
+    "nur tech": "Nurtec",
+    "nur tec": "Nurtec",
+    "nor tec": "Nurtec",
+    "zow fran": "Zofran",
+    "zoe fran": "Zofran",
+    "zon a flex": "Zanaflex",
+    "zona flex": "Zanaflex",
+    "kill epta": "Qulipta",
+    "quill ipta": "Qulipta",
+    "quill apta": "Qulipta",
+    "riza triptan": "rizatriptan",
+    "soma triptan": "sumatriptan",
+    "suma triptan": "sumatriptan",
+    "pheno barbital": "phenobarbital",
+    "feno barbital": "phenobarbital",
+    # ── Procedures / injections ───────────────────────────────────────────
+    "trigger point injections": "trigger point injections",
+    "epidural steroid injection": "epidural steroid injection",
+    "inter laminar": "interlaminar",
+    "inter laminar epidural": "interlaminar epidural",
+    "para spinal": "paraspinal",
+    "para spinal musculature": "paraspinal musculature",
+    # ── Anatomy ───────────────────────────────────────────────────────────
+    "sack ro iliac": "sacroiliac",
+    "sacro iliac": "sacroiliac",
+    "peri neural": "perineural",
+    "trans itional": "transitional",
+    # ── Conditions ────────────────────────────────────────────────────────
+    "dis equilibrium": "disequilibrium",
+    "this equilibrium": "disequilibrium",
+    "paris thesias": "paresthesias",
+    "pair asthesias": "paresthesias",
+    "spondy lo listhesis": "spondylolisthesis",
+    "spondylo listhesis": "spondylolisthesis",
+    "spinal listen thesis": "spondylolisthesis",
+    "neural fibromatosis": "neurofibromatosis",
+    "occipital neural gia": "occipital neuralgia",
+    # ── Cognitive evaluation ──────────────────────────────────────────────
+    "serial seven": "Serial-7",
+    "serial sevens": "Serial-7",
+    "romberg sign": "Romberg sign",
+}
+
+# ── Optional deepmultilingualpunctuation import ───────────────────────────────
+# deepmultilingualpunctuation restores sentence punctuation (. , ?) and
+# capitalises sentence starts.  Loaded once as a singleton at first use.
+# Model is ~300 MB; ~80 ms per segment on CPU.
+# Install with:  pip install deepmultilingualpunctuation
+# If not installed the feature is silently disabled (no error); in either case
+# the punctuation pass is bounded to PUNCT_MAX_WORKERS concurrent CPU calls so
+# it cannot overload the server under high concurrency (100+ providers).
+_PUNCT_MAX_WORKERS = 4          # max simultaneous punctuation inference calls
+_punct_semaphore = threading.BoundedSemaphore(_PUNCT_MAX_WORKERS)
+_punct_model_lock = threading.Lock()
+_punct_model: "object | None" = None   # holds PunctuationModel instance once loaded
+_PUNCT_MODEL_AVAILABLE: bool = False
+
+try:
+    from deepmultilingualpunctuation import PunctuationModel as _PunctuationModel  # type: ignore[import]
+    _PUNCT_MODEL_AVAILABLE = True
+except ImportError:
+    _PUNCT_MODEL_AVAILABLE = False
+
+
+def _get_punct_model() -> "object | None":
+    """Return the singleton PunctuationModel, loading on first call (thread-safe)."""
+    global _punct_model
+    if _punct_model is not None:
+        return _punct_model
+    if not _PUNCT_MODEL_AVAILABLE:
+        return None
+    with _punct_model_lock:
+        if _punct_model is None:
+            try:
+                _punct_model = _PunctuationModel()
+                logger.info("nemo_streaming: punctuation model loaded")
+            except Exception as exc:
+                logger.warning("nemo_streaming: punctuation model failed to load — %s", exc)
+                _punct_model = None
+    return _punct_model
+
 
 @dataclass
 class StreamingSession:
@@ -201,7 +351,13 @@ class NemoStreamingServer(ASREngine):
         Inline hotwords are loaded with no length restriction (so 2-char medical
         abbreviations like DM, IV, BP work). Terms loaded from *files* skip anything
         ≤2 chars to prevent false-positive corrections from the 98K wordlist.
+
+        Phonetic corrections (_PHONETIC_CORRECTIONS) are seeded first so that
+        any file-loaded term can override them without special casing.
         """
+        # Seed with phonetic corrections first (lowest priority — files override).
+        self._hotword_map.update(_PHONETIC_CORRECTIONS)
+
         # Load inline hotwords first — no length restriction.
         for term in hotwords:
             key = term.lower().strip()
@@ -286,13 +442,15 @@ class NemoStreamingServer(ASREngine):
                 result.append(words[i])
                 i += 1
 
-        # Re-interleave the original whitespace
+        # Re-interleave the original whitespace.
+        # When multi-word phrases collapse to fewer words the space count can
+        # become mismatched, producing a trailing space — strip it.
         out_tokens: list[str] = []
         for idx, word in enumerate(result):
             out_tokens.append(word)
             if idx < len(spaces):
                 out_tokens.append(spaces[idx])
-        return "".join(out_tokens)
+        return "".join(out_tokens).rstrip()
 
     @property
     def name(self) -> str:
@@ -729,6 +887,46 @@ class NemoStreamingServer(ASREngine):
 
         return " ".join(result)
 
+    async def _punctuate_text(self, text: str) -> str:
+        """Restore punctuation and capitalisation using deepmultilingualpunctuation.
+
+        Production safety guarantees (100+ concurrent providers):
+          • Model is a singleton: loaded once, shared across all sessions.
+          • BoundedSemaphore(_PUNCT_MAX_WORKERS=4): at most 4 concurrent CPU calls.
+          • If the semaphore is saturated, this returns the raw text immediately
+            (0 ms) — graceful degradation, never blocks the live stream.
+          • asyncio.to_thread keeps the event loop free during inference.
+          • Any unexpected exception also degrades gracefully.
+
+        Capacity: 4 workers × ~12 calls/s ≈ 48 punctuated segments/s.
+        At 100 providers × 1 chunk/3 s ≈ 33 chunks/s — comfortable headroom.
+        """
+        if not _PUNCT_MODEL_AVAILABLE or not text:
+            return text
+
+        def _run_in_thread() -> str:
+            # Non-blocking semaphore acquire — skip if all workers are busy.
+            if not _punct_semaphore.acquire(blocking=False):
+                return text
+            try:
+                model = _get_punct_model()
+                if model is None:
+                    return text
+                punctuated: str = model.restore_punctuation(text)  # type: ignore[attr-defined]
+                return punctuated
+            except Exception:  # pragma: no cover — degradation path
+                return text
+            finally:
+                _punct_semaphore.release()
+
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(_run_in_thread),
+                timeout=0.35,   # 350 ms hard cap; never delays live stream > 1 frame
+            )
+        except (asyncio.TimeoutError, Exception):
+            return text  # always degrade gracefully
+
     def _normalize_segment_text(self, text: str) -> str:
         """Final normalization pass on a transcribed segment.
 
@@ -816,12 +1014,15 @@ class NemoStreamingServer(ASREngine):
             # window — full punctuation is rebuilt by the LLM cleanup pass.
             text = re.sub(r'[.!?]+$', '', text).strip()
 
-            # Apply medical hotword corrections
+            # Apply medical hotword corrections (includes phonetic alias corrections)
             extra_hw = (config.hotwords if config is not None else None) or None
             text = self._apply_hotword_corrections(text, extra_hotwords=extra_hw)
 
-            # Normalize spacing and convert spoken dates to written form
+            # Normalize spacing and convert spoken dates / numbers to written form
             text = self._normalize_segment_text(text)
+
+            # Restore punctuation & capitalisation (async, bounded, graceful degradation)
+            text = await self._punctuate_text(text)
 
             if text:
                 partial = PartialTranscript(

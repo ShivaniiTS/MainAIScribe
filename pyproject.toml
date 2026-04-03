@@ -38,6 +38,9 @@ dev = [
     "python-multipart>=0.0.9",
     # Optional: split merged words in ASR transcripts ("historyOf" → "history Of")
     "wordninja>=2.0",
+    # Optional: restore punctuation & capitalisation in live transcripts
+    # Singleton model (~300 MB), ~80 ms/segment on CPU, bounded concurrency
+    "deepmultilingualpunctuation>=1.0",
 ]
 
 [build-system]

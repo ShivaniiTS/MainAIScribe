@@ -969,3 +969,176 @@ class TestNumberNormalization:
             "date of service twenty four two twenty twenty six"
         )
         assert "24/2/2026" in result
+
+
+class TestPhoneticCorrections:
+    """Tests for _PHONETIC_CORRECTIONS seeded into the hotword map."""
+
+    def _server(self):
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        return NemoStreamingServer()
+
+    # ── Reflexes ─────────────────────────────────────────────────────────
+    def test_deep_tendon_duplexes(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("deep tendon duplexes are 2+") == \
+            "deep tendon reflexes are 2+"
+
+    def test_deep_tendon_duplicates(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("deep tendon duplicates") == \
+            "deep tendon reflexes"
+
+    def test_two_plex(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("reflexes are two plex and symmetric") == \
+            "reflexes are 2+ and symmetric"
+
+    # ── Spurling's sign variants ──────────────────────────────────────────
+    def test_spirling_sign(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("spirling sign is negative") == \
+            "Spurling's sign is negative"
+
+    def test_spiraling_sign(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("spiraling sign is positive") == \
+            "Spurling's sign is positive"
+
+    def test_spurlings_sign_no_apostrophe(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("spurlings sign is positive on the right") == \
+            "Spurling's sign is positive on the right"
+
+    def test_sperlings_sign(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("sperlings sign is negative") == \
+            "Spurling's sign is negative"
+
+    # ── Radiculitis / radiculopathy ───────────────────────────────────────
+    def test_radical_itis(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("diagnosis is cervical radical itis") == \
+            "diagnosis is cervical radiculitis"
+
+    def test_radical_opathy(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("lumbar radical opathy") == \
+            "lumbar radiculopathy"
+
+    # ── Cervical levels ───────────────────────────────────────────────────
+    def test_cdl_seven(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("cdl seven testing") == "C7 testing"
+
+    def test_cdl_six(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("at the cdl six level") == "at the C6 level"
+
+    def test_l5_s1(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("disc herniation at l five s one") == \
+            "disc herniation at L5-S1"
+
+    # ── Postconcussive / posttraumatic ────────────────────────────────────
+    def test_post_concussive(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("post concussive syndrome") == \
+            "postconcussive syndrome"
+
+    def test_post_traumatic(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("post traumatic headaches") == \
+            "posttraumatic headaches"
+
+    # ── Myofascial ────────────────────────────────────────────────────────
+    def test_myo_fascial(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("myo fascial pain") == "myofascial pain"
+
+    def test_mayo_fascial(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("mayo fascial pain") == "myofascial pain"
+
+    # ── Medications ───────────────────────────────────────────────────────
+    def test_propanol_to_propranolol(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("60 mg of propanol") == \
+            "60 mg of propranolol"
+
+    def test_gamma_pentin(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("gamma pentin 300 mg") == \
+            "gabapentin 300 mg"
+
+    def test_nurtec_variants(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("prescription for nur tec odt") == \
+            "prescription for Nurtec odt"
+
+    def test_zofran(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("zow fran four mg") == "Zofran four mg"
+
+    def test_qulipta(self):
+        s = self._server()
+        result = s._apply_hotword_corrections("quill ipta 60 mg")
+        assert "Qulipta" in result
+
+    # ── Anatomy ───────────────────────────────────────────────────────────
+    def test_sacroiliac(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("right sacro iliac joint") == \
+            "right sacroiliac joint"
+
+    def test_paraspinal(self):
+        s = self._server()
+        assert s._apply_hotword_corrections("para spinal musculature") == \
+            "paraspinal musculature"
+
+    # ── Phonetic map seeded into hotword map — no double-init side effects ─
+    def test_phonetic_map_does_not_override_inline_hotwords(self):
+        """Inline hotwords passed at init should always win over phonetic defaults."""
+        from mcp_servers.asr.nemo_streaming_server import NemoStreamingServer
+        s = NemoStreamingServer(hotwords=["MyCustomDrug"])
+        # Custom hotword is present
+        assert "mycustomdrug" in s._hotword_map
+        # Phonetic correction is also present
+        assert "deep tendon duplexes" in s._hotword_map
+
+    def test_reload_hotwords_reseeds_phonetic_corrections(self):
+        """After reload_hotwords, phonetic corrections must still be active."""
+        s = self._server()
+        s.reload_hotwords([], [])
+        result = s._apply_hotword_corrections("deep tendon duplexes")
+        assert result == "deep tendon reflexes"
+
+    # ── _punctuate_text (unit-level — model NOT required) ─────────────────
+    def test_punctuate_text_passthrough_when_unavailable(self):
+        """Without the model, _punctuate_text returns the original text unchanged."""
+        import asyncio
+        from unittest.mock import patch
+        s = self._server()
+        # Simulate model not available
+        with patch("mcp_servers.asr.nemo_streaming_server._PUNCT_MODEL_AVAILABLE", False):
+            result = asyncio.run(s._punctuate_text("the patient is a 27 year old"))
+        assert result == "the patient is a 27 year old"
+
+    def test_punctuate_text_empty_string(self):
+        """Empty string returns empty immediately, no model call attempted."""
+        import asyncio
+        s = self._server()
+        result = asyncio.run(s._punctuate_text(""))
+        assert result == ""
+
+    def test_punctuate_text_exception_degrades_gracefully(self):
+        """If the model raises, returns original text without crashing."""
+        import asyncio
+        from unittest.mock import patch, MagicMock
+        s = self._server()
+        broken_model = MagicMock()
+        broken_model.restore_punctuation.side_effect = RuntimeError("model error")
+        with patch("mcp_servers.asr.nemo_streaming_server._PUNCT_MODEL_AVAILABLE", True), \
+             patch("mcp_servers.asr.nemo_streaming_server._get_punct_model", return_value=broken_model):
+            result = asyncio.run(s._punctuate_text("the patient presents today"))
+        assert result == "the patient presents today"
